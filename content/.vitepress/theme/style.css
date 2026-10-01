@@ -199,21 +199,21 @@
 
 .vp-nav-snake.is-moving-right {
   transition:
-    --snake-right var(--snake-lead-ms, 520ms) cubic-bezier(0.22, 1, 0.36, 1),
-    --snake-left var(--snake-tail-ms, 680ms) cubic-bezier(0.22, 1, 0.36, 1),
+    --snake-right var(--snake-lead-ms, 600ms) linear,
+    --snake-left var(--snake-tail-ms, 750ms) linear,
     opacity 200ms ease;
 }
 
 .vp-nav-snake.is-moving-left {
   transition:
-    --snake-left var(--snake-lead-ms, 520ms) cubic-bezier(0.22, 1, 0.36, 1),
-    --snake-right var(--snake-tail-ms, 680ms) cubic-bezier(0.22, 1, 0.36, 1),
+    --snake-left var(--snake-lead-ms, 600ms) linear,
+    --snake-right var(--snake-tail-ms, 750ms) linear,
     opacity 200ms ease;
 }
 
-/* Hovering ANY navbar link (or snaking between items) slowly oscillates the active item's wave */
-.VPNavBarMenu:has(.VPNavBarMenuLink:hover) .vp-nav-snake,
-.vp-nav-snake.is-snaking {
+/* Hovering ANY navbar link slowly oscillates the active item's wave;
+   while snaking, the wave stays planted on the track so the clip-path draws it across cleanly */
+.VPNavBarMenu:has(.VPNavBarMenuLink:hover) .vp-nav-snake:not(.is-snaking) {
   animation-play-state: running;
 }
 

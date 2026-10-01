@@ -23,6 +23,7 @@ export default {
 
     if (typeof document !== 'undefined') {
       let prevSnakeLeft: number | null = null
+      let prevSnakeRight: number | null = null
       let snakeTimer: ReturnType<typeof setTimeout> | null = null
 
       const updateNavSnake = (explicitTarget?: HTMLElement | null, animate = true) => {
@@ -43,6 +44,7 @@ export default {
         if (!activeLink) {
           snake.classList.remove('is-visible', 'is-snaking')
           prevSnakeLeft = null
+          prevSnakeRight = null
           return
         }
 
@@ -54,24 +56,35 @@ export default {
         const nextLeft = Math.round(rect.left - menuRect.left)
         const nextRight = Math.round(menuRect.right - rect.right)
 
-        const deltaPx = prevSnakeLeft !== null ? Math.abs(nextLeft - prevSnakeLeft) : 0
-        const hasMoved = prevSnakeLeft !== null && deltaPx > 2
+        const deltaLeft = prevSnakeLeft !== null ? Math.abs(nextLeft - prevSnakeLeft) : 0
+        const deltaRight = prevSnakeRight !== null ? Math.abs(nextRight - prevSnakeRight) : 0
+        const hasMoved = prevSnakeLeft !== null && (deltaLeft > 2 || deltaRight > 2)
 
-        if (animate && hasMoved && snake.classList.contains('is-visible') && prevSnakeLeft !== null) {
-          // Constant speed (~8ms/px leading edge, ~10.2ms/px trailing edge) so far items take proportionally longer
-          const leadMs = Math.max(260, Math.round(deltaPx * 8))
-          const tailMs = Math.max(340, Math.round(deltaPx * 10.2))
+        if (
+          animate &&
+          hasMoved &&
+          snake.classList.contains('is-visible') &&
+          prevSnakeLeft !== null &&
+          prevSnakeRight !== null
+        ) {
+          const movingRight = nextLeft >= prevSnakeLeft
+          const leadDist = movingRight ? deltaRight : deltaLeft
+          const tailDist = movingRight ? deltaLeft : deltaRight
+
+          // Constant linear drawing velocity (~10ms/px leading edge, ~12ms/px trailing edge)
+          const leadMs = Math.max(250, Math.round(leadDist * 10))
+          const tailMs = Math.max(300, Math.round(tailDist * 12))
 
           snake.style.setProperty('--snake-lead-ms', `${leadMs}ms`)
           snake.style.setProperty('--snake-tail-ms', `${tailMs}ms`)
-          snake.classList.toggle('is-moving-right', nextLeft > prevSnakeLeft)
-          snake.classList.toggle('is-moving-left', nextLeft < prevSnakeLeft)
+          snake.classList.toggle('is-moving-right', movingRight)
+          snake.classList.toggle('is-moving-left', !movingRight)
           snake.classList.add('is-snaking')
           if (snakeTimer) clearTimeout(snakeTimer)
           snakeTimer = setTimeout(() => {
             snake?.classList.remove('is-snaking')
             snakeTimer = null
-          }, tailMs + 40)
+          }, Math.max(leadMs, tailMs) + 30)
         } else if (!animate && !snakeTimer) {
           snake.classList.remove('is-moving-right', 'is-moving-left', 'is-snaking')
         }
@@ -80,6 +93,7 @@ export default {
         snake.style.setProperty('--snake-right', `${nextRight}px`)
         snake.classList.add('is-visible')
         prevSnakeLeft = nextLeft
+        prevSnakeRight = nextRight
       }
 
       // Immediately start snaking as soon as a navbar link is clicked
