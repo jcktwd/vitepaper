@@ -1,0 +1,287 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   AstroPaper Design Tokens (Warm Parchment Light + Slate & Orange Dark)
+   ========================================================================== */
+:root {
+  --background: #f6eee1;
+  --background-soft: #efe3cf;
+  --background-elv: #faf4ea;
+  --foreground: #012c56;
+  --accent: #e14a39;
+  --accent-hover: #c53727;
+  --accent-soft: rgba(225, 74, 57, 0.12);
+  --muted: #efd8b0;
+  --muted-foreground: #52657a;
+  --border: #dc9891;
+
+  /* Map AstroPaper tokens -> VitePress DefaultTheme tokens */
+  --vp-c-bg: var(--background);
+  --vp-c-bg-alt: var(--background-soft);
+  --vp-c-bg-elv: var(--background-elv);
+  --vp-c-bg-soft: var(--background-soft);
+
+  --vp-c-text-1: var(--foreground);
+  --vp-c-text-2: var(--muted-foreground);
+  --vp-c-text-3: var(--muted-foreground);
+
+  --vp-c-brand-1: var(--accent);
+  --vp-c-brand-2: var(--accent-hover);
+  --vp-c-brand-3: var(--accent);
+  --vp-c-brand-soft: var(--accent-soft);
+
+  --vp-c-border: var(--border);
+  --vp-c-divider: var(--border);
+  --vp-c-gutter: var(--border);
+
+  --vp-font-family-base: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --vp-font-family-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Callouts (:::tip, :::info, :::warning, :::danger) */
+  --vp-custom-block-tip-border: #0284c7;
+  --vp-custom-block-tip-text: var(--foreground);
+  --vp-custom-block-tip-bg: rgba(2, 132, 199, 0.08);
+
+  --vp-custom-block-info-border: var(--accent);
+  --vp-custom-block-info-text: var(--foreground);
+  --vp-custom-block-info-bg: var(--accent-soft);
+
+  --vp-custom-block-warning-border: #d97706;
+  --vp-custom-block-warning-text: var(--foreground);
+  --vp-custom-block-warning-bg: rgba(217, 119, 6, 0.1);
+
+  --vp-custom-block-danger-border: #dc2626;
+  --vp-custom-block-danger-text: var(--foreground);
+  --vp-custom-block-danger-bg: rgba(220, 38, 38, 0.1);
+
+  --vp-code-block-bg: #efe3cf;
+  --vp-code-color: var(--accent);
+  --vp-code-bg: rgba(225, 74, 57, 0.1);
+}
+
+.dark {
+  --background: #212737;
+  --background-soft: #293044;
+  --background-elv: #2b3348;
+  --foreground: #eaedf3;
+  --accent: #ff6b01;
+  --accent-hover: #ff852e;
+  --accent-soft: rgba(255, 107, 1, 0.14);
+  --muted: #343f60;
+  --muted-foreground: #afb9ca;
+  --border: #ab4b08;
+
+  --vp-code-block-bg: #1a1f2c;
+  --vp-code-color: var(--accent);
+  --vp-code-bg: rgba(255, 107, 1, 0.14);
+
+  --vp-custom-block-tip-border: #38bdf8;
+  --vp-custom-block-tip-bg: rgba(56, 189, 248, 0.1);
+
+  --vp-custom-block-warning-border: #f59e0b;
+  --vp-custom-block-warning-bg: rgba(245, 158, 11, 0.12);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-soft: var(--background-soft);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+}
+
+/* ==========================================================================
+   AstroPaper Layout & Typography Refinements on VitePress DefaultTheme
+   ========================================================================== */
+
+/* Constrain Navbar to AstroPaper's clean centered column */
+.VPNavBar .container {
+  max-width: 52rem !important;
+  margin: 0 auto;
+}
+
+.VPNavBar {
+  border-bottom: 1px solid var(--border) !important;
+  background-color: var(--background) !important;
+}
+
+.VPNavBarTitle .title {
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+}
+
+/* AstroPaper dashed active underline on nav links */
+.VPNavBarMenuLink.active {
+  color: var(--accent) !important;
+  text-decoration: underline wavy var(--accent) 2px;
+  text-underline-offset: 6px;
+}
+
+.VPNavBarMenuLink:hover {
+  color: var(--accent) !important;
+}
+
+/* Always show theme toggle & social icons directly in navbar on desktop (>= 768px) instead of hiding behind '...' ellipsis */
+@media (min-width: 768px) {
+  .VPNavBarAppearance,
+  .VPNavBarSocialLinks {
+    display: flex !important;
+    align-items: center;
+  }
+
+  .VPNavBarExtra {
+    display: none !important;
+  }
+}
+
+.VPSocialLink svg[fill="none"] {
+  fill: none !important;
+}
+
+/* Inline Iconify / Simple Icons in prose & SocialLinks */
+.vp-mask-icon {
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask-image: var(--icon-url);
+  mask-image: var(--icon-url);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.vp-inline-icon {
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.18em;
+  margin: 0 0.15em;
+}
+
+.vp-doc img.vp-inline-icon-img {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.18em;
+  margin: 0 0.15em;
+  border: none;
+  border-radius: 0;
+}
+
+/* Article & Page Container Width */
+.VPDoc .container {
+  max-width: 68rem !important;
+}
+
+.VPDoc:not(.has-sidebar) .content {
+  max-width: 48rem !important;
+}
+
+/* AstroPaper Typography inside .vp-doc */
+.vp-doc {
+  color: var(--foreground);
+  line-height: 1.75;
+}
+
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc h4 {
+  color: var(--foreground);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.vp-doc h2 {
+  border-top: 1px dashed var(--border);
+  padding-top: 1.5rem;
+  margin-top: 2.5rem;
+}
+
+.vp-doc h3 {
+  font-style: italic;
+}
+
+.vp-doc a {
+  color: var(--foreground);
+  text-decoration: underline dashed var(--border);
+  text-underline-offset: 4px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.vp-doc a:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+.vp-doc hr {
+  border-top: 1px dashed var(--border);
+  margin: 2rem 0;
+}
+
+.vp-doc img:not(.vp-inline-icon-img) {
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  margin: 1.5rem auto;
+}
+
+/* Outline Callout Containers (:::warning, :::tip, :::info, :::danger) */
+.vp-doc .custom-block {
+  border-left: 4px solid;
+  border-radius: 0.375rem;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.vp-doc .custom-block.tip {
+  border-left-color: var(--vp-custom-block-tip-border);
+}
+
+.vp-doc .custom-block.info {
+  border-left-color: var(--vp-custom-block-info-border);
+}
+
+.vp-doc .custom-block.warning {
+  border-left-color: var(--vp-custom-block-warning-border);
+}
+
+.vp-doc .custom-block.danger {
+  border-left-color: var(--vp-custom-block-danger-border);
+}
+
+.vp-doc .custom-block-title {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.8rem;
+  margin-bottom: 0.35rem;
+}
+
+/* Code blocks with crisp AstroPaper border */
+.vp-doc div[class*="language-"] {
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+}
+
+/* Mermaid diagrams container */
+.vp-doc .mermaid {
+  background: var(--background-soft);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+/* Footer matching AstroPaper */
+.VPFooter {
+  border-top: 1px solid var(--border) !important;
+  background-color: var(--background) !important;
+}

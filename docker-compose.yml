@@ -1,0 +1,16 @@
+services:
+  vitepaper:
+    image: ghcr.io/jcktwd/vitepaper:latest
+    build: .
+    container_name: vitepaper-blog
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      # Mount your personal config (keep vitepaper.local.ts alongside docker-compose.yml on your homelab)
+      - ./vitepaper.local.ts:/app/vitepaper.local.ts:ro
+      # Persist downloaded Outline attachments and synced Markdown across restarts
+      - ./content/posts:/app/content/posts
+      - ./content/public/attachments:/app/content/public/attachments

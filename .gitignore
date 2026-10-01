@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# VitePress build & cache
+content/.vitepress/dist/
+content/.vitepress/cache/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Personal instance configuration overrides
+vitepaper.local.ts
+
+# Synced Outline content & downloaded attachments
+content/posts/*.md
+content/public/attachments/
+content/public/logo-light.svg
+content/public/logo-dark.svg
+content/public/favicon.svg
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+*.log

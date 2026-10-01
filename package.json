@@ -1,0 +1,38 @@
+{
+  "name": "VitePaper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "docs:dev": "vitepress dev content",
+    "docs:build": "vitepress build content",
+    "docs:preview": "vitepress preview content",
+    "sync": "node --env-file-if-exists=.env scripts/sync.ts",
+    "sync:drafts": "node --env-file-if-exists=.env scripts/sync.ts --drafts",
+    "serve": "node --env-file-if-exists=.env scripts/server.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^12.8.1",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.20",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.3",
+    "mermaid": "^12.0.0",
+    "tailwindcss": "^4.3.3",
+    "vitepress": "^1.6.4",
+    "vue": "^3.5.43",
+    "yaml": "^2.9.1"
+  },
+  "dependencies": {
+    "sirv": "^3.0.2"
+  }
+}
