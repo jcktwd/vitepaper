@@ -6,7 +6,10 @@ import { data as posts } from '../posts.data.ts'
 const { frontmatter, page } = useData()
 
 const isSyncedDoc = computed(() => Boolean(frontmatter.value.date || frontmatter.value.outlineId))
-const isExcludedPage = computed(() => Boolean(frontmatter.value.excludeFromPosts))
+const isDraft = computed(() => Boolean(frontmatter.value.draft))
+const isUtilityNavPage = computed(
+  () => Boolean(frontmatter.value.excludeFromPosts && !frontmatter.value.draft)
+)
 
 const currentPost = computed(() => {
   const currentUrl = '/' + page.value.relativePath.replace(/\.md$/, '')
@@ -52,8 +55,24 @@ onUnmounted(() => {
       />
     </div>
 
+    <!-- Unlisted Draft Preview Banner -->
+    <div
+      v-if="isDraft"
+      class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded border border-dashed border-accent bg-accent/10 px-3.5 py-2 text-xs font-medium text-foreground"
+    >
+      <div class="flex items-center gap-2">
+        <span class="rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+          Draft Preview
+        </span>
+        <span>Unlisted preview synced from your Outline <strong>Drafts</strong> folder.</span>
+      </div>
+      <a href="/drafts" class="text-accent underline decoration-dashed underline-offset-4 hover:opacity-80">
+        All Drafts →
+      </a>
+    </div>
+
     <!-- Go Back Link (Shown on listed blog articles) -->
-    <div v-if="!isExcludedPage" class="mb-4">
+    <div v-else-if="!isUtilityNavPage" class="mb-4">
       <a
         href="/posts"
         class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-accent transition-colors"
@@ -69,9 +88,9 @@ onUnmounted(() => {
       <span>{{ frontmatter.title }}</span>
     </h1>
 
-    <!-- Published / Updated / Reading Time Metadata (Shown on listed blog articles) -->
+    <!-- Published / Updated / Reading Time Metadata -->
     <div
-      v-if="!isExcludedPage"
+      v-if="!isUtilityNavPage"
       class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground italic"
     >
       <span class="inline-flex items-center gap-1.5">

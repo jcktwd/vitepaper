@@ -9,6 +9,7 @@ export interface PostItem {
   icon?: string
   tags: string[]
   featured: boolean
+  draft: boolean
   excludeFromPosts: boolean
   readingTime: string
 }
@@ -34,11 +35,11 @@ export default createContentLoader('posts/*.md', {
           icon: frontmatter.icon,
           tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
           featured: Boolean(frontmatter.featured),
+          draft: Boolean(frontmatter.draft),
           excludeFromPosts: Boolean(frontmatter.excludeFromPosts),
           readingTime: `${minutes} min read`,
         }
       })
-      .filter((item) => !item.excludeFromPosts)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   },
 })

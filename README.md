@@ -29,6 +29,13 @@ The visual design, color palettes (Warm Parchment Light & Slate/Orange Dark), ty
     excludeFromPosts: true
     ```
     ````
+* **Cross-Document Links, `@` Mentions & Backlinks**:
+  * Links between published Outline documents (`/doc/...`, full Outline URLs, or `@` document mentions) are automatically rewritten to `/posts/<slug>` links.
+  * Links pointing to *private/unpublished* Outline notes are gracefully unwrapped to plain text so public readers never hit a broken link or login wall.
+  * Automatically computes bidirectional **Referenced In** backlinks displayed at the bottom of referenced articles.
+* **Live Unlisted Draft Previews (`/drafts`)**:
+  * Articles placed inside your Outline **Drafts** folder (or marked with `draft: true` in YAML) are synced as unlisted pages (`noindex, nofollow`), excluded from all public feeds, tags, RSS, sitemap, and `Ctrl+K` search.
+  * Preview drafts live at `/drafts` with a **Draft Preview** banner before moving them into **Published**.
 * **Brand Logos, Iconify Icons & Social Links in Prose**:
   * Render your configured social links bar anywhere in an Outline document using inline code `` `integration: socials` ``.
   * Embed any [Simple Icons](https://simpleicons.org/) brand logo or [Iconify / Icônes](https://icones.js.org/) icon inline in prose using `` `icon:<brand>` `` (e.g. `` `icon:github` ``, `` `icon:docker` ``, `` `icon:linux` ``, `` `icon:unraid` ``, `` `icon:vue` ``) or `` `icon:<collection>:<name>` `` (e.g. `` `icon:lucide:cpu` ``, `` `icon:majesticons:door-exit` ``).

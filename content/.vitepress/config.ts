@@ -65,7 +65,7 @@ function getOutlineNavItems(): Array<{ text: string; link: string; activeMatch: 
     if (!fmMatch) continue
     try {
       const fm = YAML.parse(fmMatch[1])
-      if (fm && fm.nav) {
+      if (fm && fm.nav && !fm.draft) {
         const slug = file.replace(/\.md$/, '')
         const label = typeof fm.nav === 'string' ? fm.nav : fm.title || slug
         items.push({
@@ -95,6 +95,9 @@ export default defineConfig({
 
   sitemap: {
     hostname: siteConfig.site.url,
+    transformItems(items) {
+      return items.filter((item) => !item.url.includes('drafts'))
+    },
   },
 
   head: [
@@ -221,6 +224,15 @@ export default defineConfig({
 
     search: {
       provider: 'local',
+      options: {
+        _render(src: string, env: any, md: any) {
+          const html = md.render(src, env)
+          if (env.frontmatter?.draft || env.relativePath === 'drafts.md') {
+            return ''
+          }
+          return html
+        },
+      },
     },
 
     socialLinks: siteConfig.site.socials.map((item) => {

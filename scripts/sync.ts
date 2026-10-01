@@ -210,11 +210,18 @@ async function rewriteAttachments(markdown: string): Promise<string> {
   return markdown.replace(regex, (full, id: string) => idToLocalPath.get(id) || full)
 }
 
+export interface SyncedPost {
+  slug: string
+  frontmatter: Record<string, any>
+  body: string
+}
+
 export function parseDocumentFrontmatter(
   rawMarkdown: string,
   doc: OutlineDocument,
-  inheritedTags: string[]
-) {
+  inheritedTags: string[],
+  isFromDraftsFolder = false
+): SyncedPost {
   let body = rawMarkdown.replace(/\r\n/g, '\n').trim()
   let userMeta: Record<string, any> = {}
 
@@ -259,7 +266,7 @@ export function parseDocumentFrontmatter(
       description = paragraphs[0]
         .replace(/^[*_]+|[*_]+$/g, '')
         .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/@?\[([^\]]+)\]\([^)]*\)/g, '$1')
         .replace(/[`*_~]/g, '')
         .replace(/\s+/g, ' ')
         .trim()
@@ -291,24 +298,23 @@ export function parseDocumentFrontmatter(
   const rawIcon = userMeta.icon !== undefined ? userMeta.icon : doc.icon || doc.emoji || undefined
   const icon = normalizeOutlineIcon(rawIcon)
 
-  // 7. Top-navbar (`nav`) and `excludeFromPosts` support
-  //    In YAML frontmatter:
-  //      nav: true (uses doc title) OR nav: "About Me" (custom label)
-  //      navOrder: 30 (optional sort order on navbar)
-  //      excludeFromPosts: true (excludes from main blog lists, tags, RSS, and prev/next)
+  // 7. Draft & Top-navbar (`nav`) / `excludeFromPosts` support
+  const isDraft = Boolean(isFromDraftsFolder || userMeta.draft)
+
   const navLabel =
-    typeof userMeta.nav === 'string' && userMeta.nav.trim()
+    !isDraft && typeof userMeta.nav === 'string' && userMeta.nav.trim()
       ? userMeta.nav.trim()
-      : userMeta.nav === true
+      : !isDraft && userMeta.nav === true
         ? userMeta.title || doc.title
         : undefined
 
   const excludeFromPosts =
-    userMeta.excludeFromPosts !== undefined
+    isDraft ||
+    (userMeta.excludeFromPosts !== undefined
       ? Boolean(userMeta.excludeFromPosts)
       : userMeta.unlisted !== undefined
         ? Boolean(userMeta.unlisted)
-        : false
+        : false)
 
   const frontmatter: Record<string, any> = {
     title: userMeta.title || doc.title,
@@ -318,7 +324,13 @@ export function parseDocumentFrontmatter(
     author: userMeta.author || doc.createdBy?.name || config.site.author,
     ...(icon ? { icon } : {}),
     ...(tags.length > 0 ? { tags } : {}),
-    featured: Boolean(userMeta.featured),
+    featured: !isDraft && Boolean(userMeta.featured),
+    ...(isDraft
+      ? {
+          draft: true,
+          head: [['meta', { name: 'robots', content: 'noindex, nofollow' }]],
+        }
+      : {}),
     ...(navLabel ? { nav: navLabel, navOrder: Number(userMeta.navOrder ?? 50) } : {}),
     ...(excludeFromPosts ? { excludeFromPosts: true } : {}),
     outlineId: doc.id,
@@ -330,13 +342,114 @@ export function parseDocumentFrontmatter(
   return { slug, frontmatter, body }
 }
 
-export async function syncOutline(options: { useDrafts?: boolean } = {}) {
-  const folderTarget = options.useDrafts
-    ? config.outline.draftsFolder
-    : config.outline.publishedFolder
+/**
+ * Rewrites internal Outline links (`/doc/...`, `https://<outline>/doc/...`, and `@[Title](mention://...)`)
+ * across all synced posts (outside fenced code blocks):
+ * - Links to published posts become `/posts/<targetSlug>` and register a backlink on the target post.
+ * - Links to private/unsynced Outline notes are gracefully unwrapped to plain text so they never 404.
+ */
+function resolveCrossDocumentLinksAndBacklinks(posts: SyncedPost[]) {
+  const byOutlineId = new Map<string, SyncedPost>()
+  const byUrlId = new Map<string, SyncedPost>()
 
+  for (const post of posts) {
+    if (post.frontmatter.outlineId) {
+      byOutlineId.set(String(post.frontmatter.outlineId).toLowerCase(), post)
+    }
+    if (post.frontmatter.outlineUrlId) {
+      byUrlId.set(String(post.frontmatter.outlineUrlId), post)
+    }
+  }
+
+  const backlinksMap = new Map<
+    string,
+    Map<string, { title: string; link: string; icon?: string }>
+  >()
+
+  function recordBacklink(source: SyncedPost, target: SyncedPost) {
+    if (source.slug === target.slug) return
+    // Only record backlinks from public listed posts (never leak drafts or navbar utility pages)
+    if (source.frontmatter.draft || source.frontmatter.excludeFromPosts) return
+
+    let targetLinks = backlinksMap.get(target.slug)
+    if (!targetLinks) {
+      targetLinks = new Map()
+      backlinksMap.set(target.slug, targetLinks)
+    }
+    targetLinks.set(source.slug, {
+      title: source.frontmatter.title,
+      link: `/posts/${source.slug}`,
+      ...(source.frontmatter.icon ? { icon: source.frontmatter.icon } : {}),
+    })
+  }
+
+  function findTargetDoc(identifier: string): SyncedPost | undefined {
+    const clean = identifier.trim()
+    if (byOutlineId.has(clean.toLowerCase())) {
+      return byOutlineId.get(clean.toLowerCase())
+    }
+    const trailingUuid = clean.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i)
+    if (trailingUuid && byOutlineId.has(trailingUuid[1].toLowerCase())) {
+      return byOutlineId.get(trailingUuid[1].toLowerCase())
+    }
+    if (byUrlId.has(clean)) {
+      return byUrlId.get(clean)
+    }
+    const suffix = clean.split('-').pop()
+    if (suffix && byUrlId.has(suffix)) {
+      return byUrlId.get(suffix)
+    }
+    return undefined
+  }
+
+  for (const sourcePost of posts) {
+    // Split by fenced code blocks so we never rewrite links inside ```...``` code blocks
+    const segments = sourcePost.body.split(/(^```[\s\S]*?^```)/gm)
+
+    for (let i = 0; i < segments.length; i++) {
+      if (segments[i].startsWith('```')) continue
+
+      // 1. Rewrite Outline `@[Label](mention://<id>/document/<docUuid>)` mentions
+      segments[i] = segments[i].replace(
+        /@\[([^\]]+)\]\(mention:\/\/[0-9a-f-]+\/document\/([0-9a-f-]{36})\)/gi,
+        (_full, label: string, docUuid: string) => {
+          const target = findTargetDoc(docUuid)
+          if (target && (!target.frontmatter.draft || sourcePost.frontmatter.draft)) {
+            recordBacklink(sourcePost, target)
+            return `[${label}](/posts/${target.slug})`
+          }
+          return label
+        }
+      )
+
+      // 2. Rewrite `[Label](/doc/<slug-or-id>#anchor)` and `[Label](https://<outline>/doc/<slug-or-id>#anchor)`
+      segments[i] = segments[i].replace(
+        /(?<!!)\[([^\]]+)\]\((?:https?:\/\/[^)\s/]+)?\/doc\/([a-zA-Z0-9_-]+)(#[a-zA-Z0-9_-]+)?\)/g,
+        (_full, label: string, docIdentifier: string, hash: string | undefined) => {
+          const target = findTargetDoc(docIdentifier)
+          if (target && (!target.frontmatter.draft || sourcePost.frontmatter.draft)) {
+            recordBacklink(sourcePost, target)
+            return `[${label}](/posts/${target.slug}${hash || ''})`
+          }
+          return label
+        }
+      )
+    }
+
+    sourcePost.body = segments.join('')
+  }
+
+  for (const post of posts) {
+    const bl = backlinksMap.get(post.slug)
+    if (bl && bl.size > 0) {
+      post.frontmatter.backlinks = [...bl.values()]
+    }
+  }
+}
+
+export async function syncOutline(options: { useDrafts?: boolean } = {}) {
   console.log(
-    `\n[VitePaper Sync] Connecting to ${config.outline.url} (Collection: "${config.outline.collection}", Folder: "${folderTarget}")...`
+    `\n[VitePaper Sync] Connecting to ${config.outline.url} (Collection: "${config.outline.collection}")...`
   )
 
   const collectionId = await resolveCollectionId(config.outline.collection)
@@ -344,25 +457,35 @@ export async function syncOutline(options: { useDrafts?: boolean } = {}) {
     id: collectionId,
   })
 
-  const folderNode = findFolderNode(tree, folderTarget)
-  if (!folderNode) {
+  const publishedNode = findFolderNode(tree, config.outline.publishedFolder)
+  const draftsNode = findFolderNode(tree, config.outline.draftsFolder)
+
+  if (!publishedNode && !draftsNode) {
     const topFolders = tree.map((n) => `"${n.title}"`).join(', ')
     console.warn(
-      `[VitePaper Sync] Target folder "${folderTarget}" not found in collection "${config.outline.collection}". Top-level documents: ${topFolders || '(none)'}`
+      `[VitePaper Sync] Neither "${config.outline.publishedFolder}" nor "${config.outline.draftsFolder}" found in collection "${config.outline.collection}". Top-level documents: ${topFolders || '(none)'}`
     )
     return { syncedCount: 0 }
   }
 
-  const candidateNodes = collectPostNodes(folderNode.children || [])
-  console.log(`[VitePaper Sync] Found ${candidateNodes.length} document(s) inside "${folderNode.title}".`)
+  const publishedCandidates = publishedNode
+    ? collectPostNodes(publishedNode.children || []).map((n) => ({ ...n, isDraft: false }))
+    : []
+  const draftCandidates = draftsNode
+    ? collectPostNodes(draftsNode.children || []).map((n) => ({ ...n, isDraft: true }))
+    : []
 
-  const posts: Array<{
-    slug: string
-    frontmatter: Record<string, any>
-    body: string
-  }> = []
+  const allCandidates = options.useDrafts
+    ? draftCandidates
+    : [...publishedCandidates, ...draftCandidates]
 
-  for (const item of candidateNodes) {
+  console.log(
+    `[VitePaper Sync] Found ${publishedCandidates.length} published document(s) and ${draftCandidates.length} draft(s).`
+  )
+
+  const posts: SyncedPost[] = []
+
+  for (const item of allCandidates) {
     const doc = await outlineRpc<OutlineDocument>('documents.info', { id: item.id })
 
     const rawText = (doc.text || '').trim()
@@ -371,17 +494,20 @@ export async function syncOutline(options: { useDrafts?: boolean } = {}) {
       continue
     }
 
-    console.log(`  * Processing: "${doc.title}"`)
+    console.log(`  * Processing${item.isDraft ? ' [DRAFT]' : ''}: "${doc.title}"`)
     const textWithAttachments = await rewriteAttachments(rawText)
-    const parsed = parseDocumentFrontmatter(textWithAttachments, doc, item.inheritedTags)
+    const parsed = parseDocumentFrontmatter(textWithAttachments, doc, item.inheritedTags, item.isDraft)
     posts.push(parsed)
   }
 
   // Sort newest first by date
   posts.sort((a, b) => new Date(b.frontmatter.date).getTime() - new Date(a.frontmatter.date).getTime())
 
-  // Populate chronological prev/next links ONLY for listed blog posts (skipping excludeFromPosts pages)
-  const listedPosts = posts.filter((p) => !p.frontmatter.excludeFromPosts)
+  // Resolve cross-document links (`/doc/...`, `@mentions`) and compute `backlinks`
+  resolveCrossDocumentLinksAndBacklinks(posts)
+
+  // Populate chronological prev/next links ONLY for listed blog posts (skipping drafts and excludeFromPosts pages)
+  const listedPosts = posts.filter((p) => !p.frontmatter.excludeFromPosts && !p.frontmatter.draft)
   for (let i = 0; i < listedPosts.length; i++) {
     const newer = listedPosts[i - 1]
     const older = listedPosts[i + 1]
@@ -392,7 +518,7 @@ export async function syncOutline(options: { useDrafts?: boolean } = {}) {
       ? { text: older.frontmatter.title, link: `/posts/${older.slug}` }
       : false
   }
-  for (const unlisted of posts.filter((p) => p.frontmatter.excludeFromPosts)) {
+  for (const unlisted of posts.filter((p) => p.frontmatter.excludeFromPosts || p.frontmatter.draft)) {
     unlisted.frontmatter.prev = false
     unlisted.frontmatter.next = false
   }
@@ -407,7 +533,7 @@ export async function syncOutline(options: { useDrafts?: boolean } = {}) {
     await fs.writeFile(path.join(POSTS_DIR, filename), fileContent, 'utf8')
   }
 
-  // Prune any stale .md files in content/posts/ no longer in the target folder
+  // Prune any stale .md files in content/posts/ no longer in the target folders
   if (existsSync(POSTS_DIR)) {
     const existing = await fs.readdir(POSTS_DIR)
     for (const file of existing) {

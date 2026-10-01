@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useData } from 'vitepress'
-import { data as posts, type PostItem } from '../posts.data.ts'
+import { data as allLoadedPosts, type PostItem } from '../posts.data.ts'
 
 const props = withDefaults(
   defineProps<{
-    mode?: 'home' | 'all' | 'tags'
+    mode?: 'home' | 'all' | 'tags' | 'drafts'
     limit?: number
   }>(),
   {
@@ -15,6 +15,11 @@ const props = withDefaults(
 )
 
 const { site, theme } = useData()
+
+const publishedPosts = computed(() =>
+  allLoadedPosts.filter((p) => !p.excludeFromPosts && !p.draft)
+)
+const draftPosts = computed(() => allLoadedPosts.filter((p) => p.draft))
 
 const pageLimit = computed(() => theme.value.postsPerPage || props.limit)
 const selectedTag = ref<string>('')
@@ -37,16 +42,16 @@ function selectTag(tag: string) {
   window.history.replaceState({}, '', url.toString())
 }
 
-const featuredPosts = computed(() => posts.filter((p) => p.featured))
+const featuredPosts = computed(() => publishedPosts.value.filter((p) => p.featured))
 const recentPosts = computed(() => {
-  const nonFeatured = posts.filter((p) => !p.featured)
-  const list = featuredPosts.value.length > 0 ? nonFeatured : posts
+  const nonFeatured = publishedPosts.value.filter((p) => !p.featured)
+  const list = featuredPosts.value.length > 0 ? nonFeatured : publishedPosts.value
   return list.slice(0, pageLimit.value)
 })
 
 const allTags = computed(() => {
   const counts = new Map<string, number>()
-  for (const post of posts) {
+  for (const post of publishedPosts.value) {
     for (const tag of post.tags) {
       counts.set(tag, (counts.get(tag) || 0) + 1)
     }
@@ -57,8 +62,8 @@ const allTags = computed(() => {
 })
 
 const filteredByTag = computed<PostItem[]>(() => {
-  if (!selectedTag.value) return posts
-  return posts.filter((p) => p.tags.includes(selectedTag.value))
+  if (!selectedTag.value) return publishedPosts.value
+  return publishedPosts.value.filter((p) => p.tags.includes(selectedTag.value))
 })
 
 function formatDate(iso: string): string {
@@ -112,13 +117,55 @@ function formatDate(iso: string): string {
       </p>
     </div>
 
-    <!-- Empty State -->
+    <!-- MODE: DRAFTS (Unlisted Preview Index) -->
+    <template v-if="mode === 'drafts'">
+      <p class="text-sm text-muted-foreground italic mb-6">
+        Unlisted preview of articles in your Outline <strong>Drafts</strong> folder ({{ draftPosts.length }}).
+        Move a document into <strong>Published</strong> in Outline to publish it live.
+      </p>
+      <div
+        v-if="draftPosts.length === 0"
+        class="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground"
+      >
+        No drafts currently in your Outline <strong>Drafts</strong> folder.
+      </div>
+      <ul v-else class="space-y-7">
+        <li
+          v-for="post in draftPosts"
+          :key="post.url"
+          class="group border-b border-dashed border-border/60 pb-6 last:border-none"
+        >
+          <div class="flex items-center gap-2">
+            <span class="rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+              Draft
+            </span>
+            <a :href="post.url" class="inline-block">
+              <h2
+                class="text-lg sm:text-xl font-semibold text-accent decoration-dashed underline-offset-4 group-hover:underline"
+              >
+                <span v-if="post.icon" class="mr-1.5">{{ post.icon }}</span>
+                <span>{{ post.title }}</span>
+              </h2>
+            </a>
+          </div>
+          <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground italic">
+            <time :datetime="post.date">{{ formatDate(post.date) }}</time>
+            <span>•</span>
+            <span>{{ post.readingTime }}</span>
+          </div>
+          <p v-if="post.description" class="mt-2 text-sm text-foreground/90 leading-relaxed">
+            {{ post.description }}
+          </p>
+        </li>
+      </ul>
+    </template>
+
+    <!-- Empty State for Public Modes -->
     <div
-      v-if="posts.length === 0"
+      v-else-if="publishedPosts.length === 0"
       class="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground"
     >
-      No posts synced yet. Run <code class="text-accent font-semibold">pnpm sync:drafts</code> or
-      <code class="text-accent font-semibold">pnpm sync</code> to pull articles from Outline.
+      No posts synced yet. Run <code class="text-accent font-semibold">pnpm sync</code> to pull articles from Outline.
     </div>
 
     <!-- MODE: HOME (Featured + Recent) -->
@@ -207,11 +254,11 @@ function formatDate(iso: string): string {
     <!-- MODE: ALL POSTS -->
     <template v-else-if="mode === 'all'">
       <p class="text-sm text-muted-foreground italic mb-6">
-        All the articles I've posted ({{ posts.length }}).
+        All the articles I've posted ({{ publishedPosts.length }}).
       </p>
       <ul class="space-y-7">
         <li
-          v-for="post in posts"
+          v-for="post in publishedPosts"
           :key="post.url"
           class="group border-b border-dashed border-border/60 pb-6 last:border-none"
         >
