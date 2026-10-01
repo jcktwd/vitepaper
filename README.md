@@ -36,6 +36,9 @@ The visual design, color palettes (Warm Parchment Light & Slate/Orange Dark), ty
 * **Live Unlisted Draft Previews (`/drafts`)**:
   * Articles placed inside your Outline **Drafts** folder (or marked with `draft: true` in YAML) are synced as unlisted pages (`noindex, nofollow`), excluded from all public feeds, tags, RSS, sitemap, and `Ctrl+K` search.
   * Preview drafts live at `/drafts` with a **Draft Preview** banner before moving them into **Published**.
+* **Tabbed Code Blocks (`[tab: ...]` & `[tab-group: ...]`)**:
+  * Add `[tab: <Tab Title>]` on the first line of consecutive code blocks in Outline to automatically combine them into a VitePress tabbed code group (`::: code-group`).
+  * Optionally add `[tab-group: <group-name>]` when placing multiple distinct tab groups back-to-back (e.g. a `request` tab group immediately followed by a `response` tab group).
 * **Brand Logos, Iconify Icons & Social Links in Prose**:
   * Render your configured social links bar anywhere in an Outline document using inline code `` `integration: socials` ``.
   * Embed any [Simple Icons](https://simpleicons.org/) brand logo or [Iconify / Icônes](https://icones.js.org/) icon inline in prose using `` `icon:<brand>` `` (e.g. `` `icon:github` ``, `` `icon:docker` ``, `` `icon:linux` ``, `` `icon:unraid` ``, `` `icon:vue` ``) or `` `icon:<collection>:<name>` `` (e.g. `` `icon:lucide:cpu` ``, `` `icon:majesticons:door-exit` ``).

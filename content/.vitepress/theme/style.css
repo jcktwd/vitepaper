@@ -262,10 +262,39 @@
   margin-bottom: 0.35rem;
 }
 
-/* Code blocks with crisp AstroPaper border */
+/* Code blocks & Tabbed Code Groups with crisp AstroPaper border */
+:root {
+  --vp-code-tab-bg: var(--background-soft);
+  --vp-code-tab-text-color: var(--muted-foreground);
+  --vp-code-tab-hover-text-color: var(--foreground);
+  --vp-code-tab-active-text-color: var(--accent);
+  --vp-code-tab-active-bar-color: var(--accent);
+  --vp-code-tab-divider: var(--border);
+}
+
 .vp-doc div[class*="language-"] {
   border: 1px solid var(--border);
   border-radius: 0.375rem;
+}
+
+.vp-doc .vp-code-group {
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+
+.vp-doc .vp-code-group .tabs {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border-bottom: 1px dashed var(--border);
+  background-color: var(--background-soft);
+}
+
+.vp-doc .vp-code-group div[class*="language-"] {
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
 }
 
 /* Mermaid diagrams container */

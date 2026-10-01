@@ -137,12 +137,94 @@ export default defineConfig({
       conf: 'ini',
     },
     config(md) {
-      // 1. Normalize Outline ProseMirror inline-code + bold serialization quirks before parsing
+      // 1. Normalize Outline ProseMirror inline-code + bold serialization quirks & tabbed code blocks
       md.core.ruler.before('normalize', 'outline-prosemirror-fixes', (state) => {
         state.src = state.src
           .replace(/\*\*`\*\*([^`\n]+)\*\*`\*\*/g, '`$1`')
           .replace(/`\*\*([^`\n]+)\*\*`/g, '**`$1`**')
           .replace(/`([^`\n]+)`{2}\*([^*\n]+)\*`/g, '`$1$2`')
+
+        // Transform consecutive fenced code blocks starting with `[tab: ...]` (and optional `[tab-group: ...]`)
+        // into native VitePress `::: code-group` containers.
+        const fenceRunRe = /(?:^```[^\n]*\n[\s\S]*?^```[ \t]*(?:\n|$))(?:[ \t]*\n*^```[^\n]*\n[\s\S]*?^```[ \t]*(?:\n|$))*/gm
+        const singleFenceRe = /^```([^\n]*)\n([\s\S]*?)^```[ \t]*$/gm
+
+        state.src = state.src.replace(fenceRunRe, (runChunk) => {
+          const blocks: Array<{
+            raw: string
+            lang: string
+            body: string
+            tab?: string
+            group?: string
+          }> = []
+
+          for (const match of runChunk.matchAll(singleFenceRe)) {
+            const lang = match[1].trim()
+            let body = match[2]
+            let tab: string | undefined
+            let group: string | undefined
+
+            // Parse up to 2 leading lines for `[tab-group: ...]` and `[tab: ...]` (or both on line 1)
+            for (let lineIdx = 0; lineIdx < 2; lineIdx++) {
+              const firstLineEnd = body.indexOf('\n')
+              const firstLine = (firstLineEnd === -1 ? body : body.slice(0, firstLineEnd)).trim()
+              if (!firstLine) break
+
+              const groupMatch = firstLine.match(/\[tab-group:\s*([^\]]+)\]/i)
+              const tabMatch = firstLine.match(/\[tab:\s*([^\]]+)\]/i)
+              const remainder = firstLine
+                .replace(/\[tab-group:\s*([^\]]+)\]/gi, '')
+                .replace(/\[tab:\s*([^\]]+)\]/gi, '')
+                .trim()
+
+              if ((groupMatch || tabMatch) && remainder === '') {
+                if (groupMatch) group = groupMatch[1].trim()
+                if (tabMatch) tab = tabMatch[1].trim()
+                body = firstLineEnd === -1 ? '' : body.slice(firstLineEnd + 1)
+              } else {
+                break
+              }
+            }
+
+            blocks.push({ raw: match[0], lang, body, tab, group })
+          }
+
+          if (!blocks.some((b) => b.tab)) {
+            return runChunk
+          }
+
+          const out: string[] = []
+          let currentGroupKey: string | null = null
+
+          for (const b of blocks) {
+            if (!b.tab) {
+              if (currentGroupKey !== null) {
+                out.push(':::\n')
+                currentGroupKey = null
+              }
+              out.push(b.raw + '\n')
+              continue
+            }
+
+            const groupKey = b.group ? `named:${b.group.toLowerCase()}` : 'default'
+            if (currentGroupKey !== groupKey) {
+              if (currentGroupKey !== null) {
+                out.push(':::\n')
+              }
+              out.push('::: code-group\n')
+              currentGroupKey = groupKey
+            }
+
+            const fenceLang = b.lang || 'txt'
+            out.push(`\`\`\`${fenceLang} [${b.tab}]\n${b.body}\`\`\`\n`)
+          }
+
+          if (currentGroupKey !== null) {
+            out.push(':::\n')
+          }
+
+          return out.join('\n')
+        })
       })
 
       // 2. Render ```mermaid fenced blocks via our native <Mermaid /> Vue component
