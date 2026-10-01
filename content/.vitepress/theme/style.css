@@ -99,6 +99,17 @@
    AstroPaper Layout & Typography Refinements on VitePress DefaultTheme
    ========================================================================== */
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--vp-nav-height, 64px) + 3.5rem);
+}
+
+@media (min-width: 1280px) {
+  html {
+    scroll-padding-top: calc(var(--vp-nav-height, 64px) + 1.5rem);
+  }
+}
+
 /* Constrain Navbar to AstroPaper's clean centered column */
 .VPNavBar .container {
   max-width: 52rem !important;
@@ -232,6 +243,82 @@
 
 .VPSocialLink svg[fill="none"] {
   fill: none !important;
+}
+
+/* Transform "On this page >" (< 1280px) from a floating popup into a slide-out sidebar drawer */
+.VPLocalNav {
+  background-color: var(--background) !important;
+  border-bottom: 1px dashed var(--border) !important;
+}
+
+.VPLocalNav .container {
+  max-width: 52rem !important;
+  margin: 0 auto;
+}
+
+.VPLocalNavOutlineDropdown button {
+  color: var(--muted-foreground) !important;
+  transition: color 150ms ease !important;
+}
+
+.VPLocalNavOutlineDropdown button:hover,
+.VPLocalNavOutlineDropdown button.open {
+  color: var(--accent) !important;
+}
+
+.VPLocalNavOutlineDropdown .items {
+  position: absolute !important;
+  top: calc(100% + 1px) !important;
+  left: 0 !important;
+  right: auto !important;
+  width: min(290px, 84vw) !important;
+  height: calc(var(--vp-vh, 100vh) - 48px) !important;
+  max-height: calc(var(--vp-vh, 100vh) - 48px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  border: none !important;
+  border-right: 1px dashed var(--border) !important;
+  border-radius: 0 !important;
+  background-color: var(--background-soft) !important;
+  box-shadow: 14px 0 32px -8px rgba(0, 0, 0, 0.22) !important;
+  overflow: hidden !important;
+}
+
+.VPLocalNavOutlineDropdown .header {
+  flex-shrink: 0;
+  background-color: var(--background-soft) !important;
+  border-bottom: 1px dashed var(--border) !important;
+}
+
+.VPLocalNavOutlineDropdown .top-link {
+  color: var(--accent) !important;
+  font-weight: 600 !important;
+}
+
+.VPLocalNavOutlineDropdown .outline {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 8px !important;
+  background-color: var(--background-soft) !important;
+}
+
+.VPLocalNavOutlineDropdown .items.flyout-enter-active {
+  transition:
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 200ms ease !important;
+}
+
+.VPLocalNavOutlineDropdown .items.flyout-leave-active {
+  transition:
+    transform 240ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 180ms ease !important;
+}
+
+.VPLocalNavOutlineDropdown .items.flyout-enter-from,
+.VPLocalNavOutlineDropdown .items.flyout-leave-to {
+  opacity: 0 !important;
+  transform: translateX(-100%) !important;
 }
 
 /* Inline Iconify / Simple Icons in prose & SocialLinks */
