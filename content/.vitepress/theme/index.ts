@@ -58,6 +58,7 @@ export default {
 
         const deltaLeft = prevSnakeLeft !== null ? Math.abs(nextLeft - prevSnakeLeft) : 0
         const deltaRight = prevSnakeRight !== null ? Math.abs(nextRight - prevSnakeRight) : 0
+        const avgDelta = (deltaLeft + deltaRight) / 2
         const hasMoved = prevSnakeLeft !== null && (deltaLeft > 2 || deltaRight > 2)
 
         if (
@@ -68,15 +69,11 @@ export default {
           prevSnakeRight !== null
         ) {
           const movingRight = nextLeft >= prevSnakeLeft
-          const leadDist = movingRight ? deltaRight : deltaLeft
-          const tailDist = movingRight ? deltaLeft : deltaRight
+          // Both edges share the exact same duration (scaled by distance at ~9ms/px)
+          // so both start at t=0 and arrive at the exact same millisecond
+          const durationMs = Math.max(360, Math.round(avgDelta * 9))
 
-          // Constant linear drawing velocity (~10ms/px leading edge, ~12ms/px trailing edge)
-          const leadMs = Math.max(250, Math.round(leadDist * 10))
-          const tailMs = Math.max(300, Math.round(tailDist * 12))
-
-          snake.style.setProperty('--snake-lead-ms', `${leadMs}ms`)
-          snake.style.setProperty('--snake-tail-ms', `${tailMs}ms`)
+          snake.style.setProperty('--snake-duration', `${durationMs}ms`)
           snake.classList.toggle('is-moving-right', movingRight)
           snake.classList.toggle('is-moving-left', !movingRight)
           snake.classList.add('is-snaking')
@@ -84,7 +81,7 @@ export default {
           snakeTimer = setTimeout(() => {
             snake?.classList.remove('is-snaking')
             snakeTimer = null
-          }, Math.max(leadMs, tailMs) + 30)
+          }, durationMs + 30)
         } else if (!animate && !snakeTimer) {
           snake.classList.remove('is-moving-right', 'is-moving-left', 'is-snaking')
         }
