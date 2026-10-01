@@ -144,8 +144,107 @@ export default defineConfig({
           .replace(/`\*\*([^`\n]+)\*\*`/g, '**`$1`**')
           .replace(/`([^`\n]+)`{2}\*([^*\n]+)\*`/g, '`$1$2`')
 
-        // Transform consecutive fenced code blocks starting with `[tab: ...]` (and optional `[tab-group: ...]`)
+        // Transform consecutive fenced code blocks with `tab` (and optional named `tab-group`) metadata
         // into native VitePress `::: code-group` containers.
+        // Supports both:
+        //   1. YAML frontmatter at top of code block (`---\ntab-group: req\ntab: Headers\n---` or `--- tab-group: req, tab: Headers ---`)
+        //   2. Bracketed shorthand (`[tab-group: req, tab: Headers]`, `[tab-group: req] [tab: Headers]`, or on 2 lines)
+        function extractCodeBlockTabMeta(rawBody: string): {
+          body: string
+          tab?: string
+          group?: string
+        } {
+          // 1. Check for multi-line `---\n...\n---` YAML frontmatter at the very top of the code block
+          const multiYamlMatch = rawBody.match(/^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/)
+          if (multiYamlMatch) {
+            try {
+              const parsed = YAML.parse(multiYamlMatch[1])
+              if (parsed && typeof parsed === 'object' && typeof parsed.tab === 'string' && parsed.tab.trim()) {
+                const group =
+                  typeof parsed['tab-group'] === 'string' && parsed['tab-group'].trim()
+                    ? parsed['tab-group'].trim()
+                    : undefined
+                return {
+                  body: rawBody.slice(multiYamlMatch[0].length),
+                  tab: parsed.tab.trim(),
+                  group,
+                }
+              }
+            } catch {
+              // Not valid tab frontmatter; leave code untouched
+            }
+          }
+
+          // 2. Check for single-line `--- ... ---` frontmatter at the top of the code block
+          const singleYamlMatch = rawBody.match(/^---[ \t]+([^\n]+?)[ \t]+---[ \t]*(?:\n|$)/)
+          if (singleYamlMatch) {
+            try {
+              const inner = singleYamlMatch[1].trim()
+              const yamlText = inner.startsWith('{') ? inner : `{ ${inner} }`
+              const parsed = YAML.parse(yamlText)
+              if (parsed && typeof parsed === 'object' && typeof parsed.tab === 'string' && parsed.tab.trim()) {
+                const group =
+                  typeof parsed['tab-group'] === 'string' && parsed['tab-group'].trim()
+                    ? parsed['tab-group'].trim()
+                    : undefined
+                return {
+                  body: rawBody.slice(singleYamlMatch[0].length),
+                  tab: parsed.tab.trim(),
+                  group,
+                }
+              }
+            } catch {
+              // Not valid single-line tab frontmatter
+            }
+          }
+
+          // 3. Check up to 2 leading lines for bracketed shorthand:
+          //    `[tab: Title]`, `[tab-group: name, tab: Title]`, `[tab-group: name] [tab: Title]`, or on 2 lines
+          let body = rawBody
+          let tab: string | undefined
+          let group: string | undefined
+
+          for (let lineIdx = 0; lineIdx < 2; lineIdx++) {
+            const firstLineEnd = body.indexOf('\n')
+            const firstLine = (firstLineEnd === -1 ? body : body.slice(0, firstLineEnd)).trim()
+            if (!firstLine.startsWith('[') || !firstLine.endsWith(']')) break
+
+            const bracketGroups = [...firstLine.matchAll(/\[([^\]]+)\]/g)]
+            if (bracketGroups.length === 0) break
+
+            const stripped = firstLine.replace(/\[[^\]]+\]/g, '').trim()
+            if (stripped !== '') break
+
+            let matchedDirective = false
+            for (const bg of bracketGroups) {
+              const parts = bg[1].split(/[,;]+/).map((s) => s.trim()).filter(Boolean)
+              for (const part of parts) {
+                const gm = part.match(/^tab-group:\s*(.+)$/i)
+                const tm = part.match(/^tab:\s*(.+)$/i)
+                if (gm && gm[1].trim()) {
+                  group = gm[1].trim()
+                  matchedDirective = true
+                } else if (tm && tm[1].trim()) {
+                  tab = tm[1].trim()
+                  matchedDirective = true
+                } else {
+                  // Unknown token inside brackets (e.g. JSON array or INI section) -> abort
+                  return { body: rawBody }
+                }
+              }
+            }
+
+            if (matchedDirective) {
+              body = firstLineEnd === -1 ? '' : body.slice(firstLineEnd + 1)
+            } else {
+              break
+            }
+          }
+
+          if (!tab) return { body: rawBody }
+          return { body, tab, group }
+        }
+
         const fenceRunRe = /(?:^```[^\n]*\n[\s\S]*?^```[ \t]*(?:\n|$))(?:[ \t]*\n*^```[^\n]*\n[\s\S]*?^```[ \t]*(?:\n|$))*/gm
         const singleFenceRe = /^```([^\n]*)\n([\s\S]*?)^```[ \t]*$/gm
 
@@ -160,32 +259,7 @@ export default defineConfig({
 
           for (const match of runChunk.matchAll(singleFenceRe)) {
             const lang = match[1].trim()
-            let body = match[2]
-            let tab: string | undefined
-            let group: string | undefined
-
-            // Parse up to 2 leading lines for `[tab-group: ...]` and `[tab: ...]` (or both on line 1)
-            for (let lineIdx = 0; lineIdx < 2; lineIdx++) {
-              const firstLineEnd = body.indexOf('\n')
-              const firstLine = (firstLineEnd === -1 ? body : body.slice(0, firstLineEnd)).trim()
-              if (!firstLine) break
-
-              const groupMatch = firstLine.match(/\[tab-group:\s*([^\]]+)\]/i)
-              const tabMatch = firstLine.match(/\[tab:\s*([^\]]+)\]/i)
-              const remainder = firstLine
-                .replace(/\[tab-group:\s*([^\]]+)\]/gi, '')
-                .replace(/\[tab:\s*([^\]]+)\]/gi, '')
-                .trim()
-
-              if ((groupMatch || tabMatch) && remainder === '') {
-                if (groupMatch) group = groupMatch[1].trim()
-                if (tabMatch) tab = tabMatch[1].trim()
-                body = firstLineEnd === -1 ? '' : body.slice(firstLineEnd + 1)
-              } else {
-                break
-              }
-            }
-
+            const { body, tab, group } = extractCodeBlockTabMeta(match[2])
             blocks.push({ raw: match[0], lang, body, tab, group })
           }
 
