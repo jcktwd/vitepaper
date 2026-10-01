@@ -16,6 +16,14 @@ const currentPost = computed(() => {
   return posts.find((p) => p.url === currentUrl || p.url === currentUrl + '.html')
 })
 
+const postTransitionName = computed(() => {
+  const slug = page.value.relativePath
+    .replace(/^\/+/, '')
+    .replace(/\.md$|\.html$/i, '')
+    .replace(/[^a-zA-Z0-9_-]/g, '-')
+  return `post-title-${slug}`
+})
+
 function formatDate(iso?: string): string {
   if (!iso) return ''
   const d = new Date(iso)
@@ -83,7 +91,10 @@ onUnmounted(() => {
     </div>
 
     <!-- Title + Outline Icon -->
-    <h1 class="text-2xl sm:text-3xl font-bold text-accent leading-tight tracking-tight mb-3">
+    <h1
+      class="vp-post-title"
+      :style="{ viewTransitionName: postTransitionName }"
+    >
       <span v-if="frontmatter.icon" class="mr-2">{{ frontmatter.icon }}</span>
       <span>{{ frontmatter.title }}</span>
     </h1>
@@ -123,20 +134,5 @@ onUnmounted(() => {
         <span>{{ currentPost.readingTime }}</span>
       </template>
     </div>
-
-    <!-- Tags -->
-    <ul
-      v-if="Array.isArray(frontmatter.tags) && frontmatter.tags.length > 0"
-      class="mt-4 flex flex-wrap gap-2"
-    >
-      <li v-for="tag in frontmatter.tags" :key="tag">
-        <a
-          :href="`/tags?tag=${encodeURIComponent(tag)}`"
-          class="inline-block text-xs font-medium text-foreground hover:text-accent underline decoration-dashed underline-offset-4 transition-colors"
-        >
-          #{{ tag }}
-        </a>
-      </li>
-    </ul>
   </div>
 </template>

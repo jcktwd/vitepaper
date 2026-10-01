@@ -86,6 +86,14 @@ function getOutlineNavItems(): Array<{ text: string; link: string; activeMatch: 
 }
 
 const { navLogo, faviconHref } = resolveSiteLogo(siteConfig.site.logo)
+const outlineNavItems = getOutlineNavItems()
+const navSlugs = outlineNavItems
+  .map((item) => item.link.replace(/^\/posts\//, ''))
+  .filter(Boolean)
+const postsActiveMatch =
+  navSlugs.length > 0
+    ? `^/posts(?:$|/(?!(?:${navSlugs.join('|')})(?:$|/|\\.html)))`
+    : '^/posts'
 
 export default defineConfig({
   title: siteConfig.site.title,
@@ -373,9 +381,9 @@ export default defineConfig({
     postsPerPage: siteConfig.site.postsPerPage,
 
     nav: [
-      { text: 'Posts', link: '/posts', activeMatch: '^/posts$' },
+      { text: 'Posts', link: '/posts', activeMatch: postsActiveMatch },
       { text: 'Tags', link: '/tags', activeMatch: '^/tags' },
-      ...getOutlineNavItems(),
+      ...outlineNavItems,
     ],
 
     search: {

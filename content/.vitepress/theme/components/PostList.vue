@@ -73,6 +73,14 @@ function formatDate(iso: string): string {
     year: 'numeric',
   })
 }
+
+function getPostTransitionName(urlOrPath: string): string {
+  const slug = urlOrPath
+    .replace(/^\/+/, '')
+    .replace(/\.md$|\.html$/i, '')
+    .replace(/[^a-zA-Z0-9_-]/g, '-')
+  return `post-title-${slug}`
+}
 </script>
 
 <template>
@@ -139,9 +147,10 @@ function formatDate(iso: string): string {
             <span class="rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
               Draft
             </span>
-            <a :href="post.url" class="inline-block">
+            <a :href="post.url" class="vp-post-card-link inline-block">
               <h2
-                class="text-lg sm:text-xl font-semibold text-accent decoration-dashed underline-offset-4 group-hover:underline"
+                class="vp-post-card-title"
+                :style="{ viewTransitionName: getPostTransitionName(post.url) }"
               >
                 <span v-if="post.icon" class="mr-1.5">{{ post.icon }}</span>
                 <span>{{ post.title }}</span>
@@ -174,9 +183,10 @@ function formatDate(iso: string): string {
         <h2 class="text-xl font-bold tracking-wide uppercase text-foreground mb-4">Featured</h2>
         <ul class="space-y-6">
           <li v-for="post in featuredPosts" :key="post.url" class="group">
-            <a :href="post.url" class="inline-block">
+            <a :href="post.url" class="vp-post-card-link inline-block">
               <h3
-                class="text-lg font-semibold text-accent decoration-dashed underline-offset-4 group-hover:underline"
+                class="vp-post-card-title"
+                :style="{ viewTransitionName: getPostTransitionName(post.url) }"
               >
                 <span v-if="post.icon" class="mr-1.5">{{ post.icon }}</span>
                 <span>{{ post.title }}</span>
@@ -209,9 +219,10 @@ function formatDate(iso: string): string {
         <h2 class="text-xl font-bold tracking-wide uppercase text-foreground mb-4">Recent Posts</h2>
         <ul class="space-y-6">
           <li v-for="post in recentPosts" :key="post.url" class="group">
-            <a :href="post.url" class="inline-block">
+            <a :href="post.url" class="vp-post-card-link inline-block">
               <h3
-                class="text-lg font-semibold text-accent decoration-dashed underline-offset-4 group-hover:underline"
+                class="vp-post-card-title"
+                :style="{ viewTransitionName: getPostTransitionName(post.url) }"
               >
                 <span v-if="post.icon" class="mr-1.5">{{ post.icon }}</span>
                 <span>{{ post.title }}</span>
@@ -262,9 +273,10 @@ function formatDate(iso: string): string {
           :key="post.url"
           class="group border-b border-dashed border-border/60 pb-6 last:border-none"
         >
-          <a :href="post.url" class="inline-block">
+          <a :href="post.url" class="vp-post-card-link inline-block">
             <h2
-              class="text-lg sm:text-xl font-semibold text-accent decoration-dashed underline-offset-4 group-hover:underline"
+              class="vp-post-card-title"
+              :style="{ viewTransitionName: getPostTransitionName(post.url) }"
             >
               <span v-if="post.icon" class="mr-1.5">{{ post.icon }}</span>
               <span>{{ post.title }}</span>
@@ -323,9 +335,10 @@ function formatDate(iso: string): string {
           :key="post.url"
           class="group border-b border-dashed border-border/60 pb-5 last:border-none"
         >
-          <a :href="post.url" class="inline-block">
+          <a :href="post.url" class="vp-post-card-link inline-block">
             <h3
-              class="text-lg font-semibold text-accent decoration-dashed underline-offset-4 group-hover:underline"
+              class="vp-post-card-title"
+              :style="{ viewTransitionName: getPostTransitionName(post.url) }"
             >
               <span v-if="post.icon" class="mr-1.5">{{ post.icon }}</span>
               <span>{{ post.title }}</span>

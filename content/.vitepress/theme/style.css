@@ -116,15 +116,120 @@
   letter-spacing: -0.02em;
 }
 
-/* AstroPaper dashed active underline on nav links */
+/* AstroPaper dynamic wiggling & snaking wavy underline on navbar links */
+:root {
+  --vp-wave-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 5' width='12' height='5'%3E%3Cpath d='M 0 2.5 Q 3 0 6 2.5 T 12 2.5' fill='none' stroke='black' stroke-width='1.85' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+@keyframes vp-wave-crawl {
+  from {
+    -webkit-mask-position: 0px 0px;
+    mask-position: 0px 0px;
+  }
+  to {
+    -webkit-mask-position: -24px 0px;
+    mask-position: -24px 0px;
+  }
+}
+
+.VPNavBarMenu {
+  position: relative;
+}
+
+.VPNavBarMenuLink {
+  position: relative;
+}
+
+.VPNavBarMenuLink > span {
+  position: relative;
+  display: inline-block;
+}
+
 .VPNavBarMenuLink.active {
   color: var(--accent) !important;
-  text-decoration: underline wavy var(--accent) 2px;
-  text-underline-offset: 6px;
+  text-decoration: none !important;
 }
 
 .VPNavBarMenuLink:hover {
   color: var(--accent) !important;
+}
+
+/* Hovering an inactive nav item shows a subtle undulating preview wave */
+.VPNavBarMenuLink:not(.active) > span::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  height: 5px;
+  background-color: var(--accent);
+  -webkit-mask-image: var(--vp-wave-mask);
+  mask-image: var(--vp-wave-mask);
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  -webkit-mask-size: 12px 5px;
+  mask-size: 12px 5px;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+}
+
+.VPNavBarMenuLink:not(.active):hover > span::after {
+  opacity: 0.65;
+  transform: translateY(0);
+  animation: vp-wave-crawl 0.9s linear infinite;
+}
+
+/* Shared active wavy underline that snakes between navbar items */
+.vp-nav-snake {
+  position: absolute;
+  left: var(--snake-left, 0px);
+  right: var(--snake-right, 100%);
+  bottom: 18px;
+  height: 5px;
+  background-color: var(--accent);
+  -webkit-mask-image: var(--vp-wave-mask);
+  mask-image: var(--vp-wave-mask);
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  -webkit-mask-size: 12px 5px;
+  mask-size: 12px 5px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+  animation: vp-wave-crawl 0.9s linear infinite;
+  animation-play-state: paused;
+}
+
+.vp-nav-snake.is-visible {
+  opacity: 1;
+}
+
+/* Moving right: right edge (head) darts out fast, left edge (tail) catches up */
+.vp-nav-snake.is-moving-right {
+  transition:
+    right 230ms cubic-bezier(0.16, 1, 0.3, 1),
+    left 440ms cubic-bezier(0.5, 0, 0.15, 1),
+    opacity 150ms ease;
+}
+
+/* Moving left: left edge (head) darts out fast, right edge (tail) catches up */
+.vp-nav-snake.is-moving-left {
+  transition:
+    left 230ms cubic-bezier(0.16, 1, 0.3, 1),
+    right 440ms cubic-bezier(0.5, 0, 0.15, 1),
+    opacity 150ms ease;
+}
+
+/* Wiggle animates when hovering the active link OR while snaking to a new link */
+.VPNavBarMenu:has(.VPNavBarMenuLink.active:hover) .vp-nav-snake,
+.vp-nav-snake.is-snaking {
+  animation-play-state: running;
+}
+
+.vp-nav-snake.is-snaking {
+  animation-duration: 0.45s;
 }
 
 /* Always show theme toggle & social icons directly in navbar on desktop (>= 768px) instead of hiding behind '...' ellipsis */
@@ -182,39 +287,133 @@
   max-width: 48rem !important;
 }
 
-/* AstroPaper Typography inside .vp-doc */
+/* AstroPaper Post Titles (List Cards & Individual Post Header)
+   Defined outside @layer so VitePress's unlayered base.css / vp-doc.css never override them */
+.vp-post-card-title {
+  display: inline-block;
+  width: fit-content;
+  color: var(--accent) !important;
+  font-size: 1.125rem !important;
+  line-height: 1.55 !important;
+  font-weight: 600 !important;
+  font-style: normal !important;
+  letter-spacing: -0.01em !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-decoration-line: none;
+  text-decoration-style: dashed;
+  text-underline-offset: 4px;
+}
+
+@media (min-width: 640px) {
+  h2.vp-post-card-title {
+    font-size: 1.25rem !important;
+  }
+}
+
+.group:hover .vp-post-card-title,
+a:hover > .vp-post-card-title {
+  text-decoration-line: underline !important;
+  text-decoration-style: dashed !important;
+  text-decoration-color: var(--accent) !important;
+  text-underline-offset: 4px !important;
+}
+
+.vp-post-title {
+  display: inline-block;
+  width: fit-content;
+  color: var(--accent) !important;
+  font-size: 1.5rem !important;
+  line-height: 1.3 !important;
+  font-weight: 700 !important;
+  font-style: normal !important;
+  letter-spacing: -0.02em !important;
+  border: none !important;
+  margin: 0 0 0.75rem 0 !important;
+  padding: 0 !important;
+}
+
+@media (min-width: 640px) {
+  .vp-post-title {
+    font-size: 1.875rem !important;
+    line-height: 1.25 !important;
+  }
+}
+
+/* Insulate .not-prose components (like PostList) from VitePress's .vp-doc rules */
+.vp-doc :where(.not-prose) ul,
+.vp-doc :where(.not-prose) ol {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin: 0 !important;
+}
+
+.vp-doc :where(.not-prose) li + li {
+  margin-top: 0 !important;
+}
+
+.vp-doc :where(.not-prose) p {
+  margin: 0 !important;
+  line-height: 1.625 !important;
+}
+
+.vp-doc :where(.not-prose) a.vp-post-card-link {
+  color: var(--accent) !important;
+  text-decoration: none !important;
+}
+
+/* View Transitions API — AstroPaper-style morphing header + page cross-fade
+   Keep :root out of the snapshot so .VPNav's live snaking underline never freezes */
+:root {
+  view-transition-name: none;
+}
+
+.VPContent {
+  view-transition-name: vp-content;
+}
+
+::view-transition-old(vp-content),
+::view-transition-new(vp-content) {
+  animation-duration: 220ms;
+  animation-timing-function: ease-in-out;
+}
+
+::view-transition-group(*) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* AstroPaper Typography inside .vp-doc (excluding .not-prose components) */
 .vp-doc {
   color: var(--foreground);
   line-height: 1.75;
 }
 
-.vp-doc h1,
-.vp-doc h2,
-.vp-doc h3,
-.vp-doc h4 {
+.vp-doc :where(h1, h2, h3, h4):not(:where(.not-prose, .not-prose *)) {
   color: var(--foreground);
   font-weight: 700;
   letter-spacing: -0.015em;
 }
 
-.vp-doc h2 {
+.vp-doc h2:not(:where(.not-prose, .not-prose *)) {
   border-top: 1px dashed var(--border);
   padding-top: 1.5rem;
   margin-top: 2.5rem;
 }
 
-.vp-doc h3 {
+.vp-doc h3:not(:where(.not-prose, .not-prose *)) {
   font-style: italic;
 }
 
-.vp-doc a {
+.vp-doc a:not(:where(.not-prose, .not-prose *)) {
   color: var(--foreground);
   text-decoration: underline dashed var(--border);
   text-underline-offset: 4px;
   transition: color 0.15s ease, text-decoration-color 0.15s ease;
 }
 
-.vp-doc a:hover {
+.vp-doc a:not(:where(.not-prose, .not-prose *)):hover {
   color: var(--accent);
   text-decoration-color: var(--accent);
 }
@@ -307,6 +506,327 @@
   display: flex;
   justify-content: center;
   overflow-x: auto;
+}
+
+/* ==========================================================================
+   AstroPaper Post Footer: Back to Top (Floating + Docking), Tags & ShareLinks
+   ========================================================================== */
+.vp-post-footer {
+  margin-top: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.vp-post-footer-hr {
+  border: 0;
+  border-top: 1px dashed var(--border);
+  margin: 2rem 0;
+}
+
+/* Dock slot sits at the top-right of the post footer on desktop (md: >= 768px) */
+@media (min-width: 768px) {
+  .vp-btt-dock-slot {
+    float: inline-end;
+    margin-inline-end: 0.25rem;
+    height: 2rem;
+  }
+}
+
+.vp-btt-container {
+  position: fixed;
+  inset-inline-end: 1rem;
+  bottom: 2rem;
+  z-index: 50;
+  transition: opacity 500ms ease, transform 500ms ease;
+}
+
+.vp-btt-container.is-hidden {
+  opacity: 0;
+  transform: translateY(3.5rem);
+  pointer-events: none;
+}
+
+.vp-btt-container.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (min-width: 768px) {
+  .vp-btt-container.is-floating {
+    position: fixed;
+    right: var(--btt-dock-right, 2rem);
+    inset-inline-end: var(--btt-dock-right, 2rem);
+    bottom: 2rem;
+  }
+
+  .vp-btt-container.is-docked {
+    position: static;
+    inset-inline-end: auto;
+    bottom: auto;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+}
+
+.vp-btt-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+@media (min-width: 768px) {
+  .vp-btt-btn {
+    width: fit-content;
+    height: 2rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    box-shadow: none;
+    background-color: color-mix(in srgb, var(--background) 75%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+.vp-btt-progress {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: block;
+  width: 3.5rem;
+  height: 3.5rem;
+  transform: scale(1.1);
+  border-radius: 9999px;
+  background-color: transparent;
+}
+
+@media (min-width: 768px) {
+  .vp-btt-progress {
+    display: none;
+  }
+}
+
+.vp-btt-icon-mobile {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  transform: rotate(90deg);
+}
+
+@media (min-width: 768px) {
+  .vp-btt-icon-mobile {
+    display: none;
+  }
+}
+
+.vp-btt-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+@media (min-width: 768px) {
+  .vp-btt-label {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    transition: color 150ms ease;
+  }
+
+  .vp-btt-btn:hover .vp-btt-label {
+    color: var(--accent);
+  }
+}
+
+.vp-btt-icon-desktop {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Post Footer Tags (AstroPaper Tag.astro) */
+.vp-post-footer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0 2rem 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+@media (min-width: 640px) {
+  .vp-post-footer-tags {
+    margin: 2rem 0 !important;
+  }
+}
+
+.vp-post-tag-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--foreground) !important;
+  text-decoration: none !important;
+  border-bottom: 2px dashed var(--foreground);
+  transition: color 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.vp-post-tag-link:hover {
+  color: var(--accent) !important;
+  border-bottom-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.vp-post-tag-hash {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  opacity: 0.8;
+}
+
+/* Share Links (AstroPaper ShareLinks.astro) */
+.vp-share-container {
+  clear: both;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+@media (min-width: 768px) {
+  .vp-share-container {
+    align-items: flex-start;
+  }
+}
+
+.vp-share-intro {
+  font-style: italic;
+  color: var(--foreground);
+}
+
+.vp-share-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  text-align: center;
+}
+
+.vp-share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  color: var(--foreground) !important;
+  text-decoration: none !important;
+  transform: scale(0.9);
+  transition: color 150ms ease, transform 150ms ease;
+}
+
+@media (min-width: 640px) {
+  .vp-share-btn {
+    padding: 0.25rem;
+  }
+}
+
+.vp-share-btn:hover {
+  color: var(--accent) !important;
+  transform: scale(0.9) rotate(6deg);
+}
+
+.vp-share-icon {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  transform: scale(1.25);
+  fill: transparent;
+  stroke: currentColor;
+  stroke-width: 2;
+  opacity: 0.9;
+}
+
+@media (min-width: 640px) {
+  .vp-share-icon {
+    transform: scale(1.1);
+  }
+}
+
+/* Referenced In Backlinks Box */
+.vp-backlinks-box {
+  margin-top: 2rem;
+  border-radius: 0.375rem;
+  border: 1px dashed var(--border);
+  background-color: color-mix(in srgb, var(--background-soft) 60%, transparent);
+  padding: 1rem;
+}
+
+.vp-backlinks-title {
+  margin-bottom: 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground);
+}
+
+.vp-backlinks-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.vp-backlink-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground) !important;
+  text-decoration: underline dashed var(--border) !important;
+  text-underline-offset: 4px;
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+}
+
+.vp-backlink-item:hover {
+  color: var(--accent) !important;
+  text-decoration-color: var(--accent) !important;
+}
+
+/* AstroPaper dashed divider above Prev/Next post links */
+.VPDocFooter .prev-next {
+  border-top: 1px dashed var(--border) !important;
+  padding-top: 2rem !important;
+  margin-top: 2rem !important;
 }
 
 /* Footer matching AstroPaper */
