@@ -64,7 +64,7 @@ export default {
           snakeTimer = setTimeout(() => {
             snake?.classList.remove('is-snaking')
             snakeTimer = null
-          }, 480)
+          }, 850)
         } else if (!animate && !snakeTimer) {
           snake.classList.remove('is-moving-right', 'is-moving-left', 'is-snaking')
         }
