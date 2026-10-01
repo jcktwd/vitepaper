@@ -54,9 +54,16 @@ export default {
         const nextLeft = Math.round(rect.left - menuRect.left)
         const nextRight = Math.round(menuRect.right - rect.right)
 
-        const hasMoved = prevSnakeLeft !== null && Math.abs(nextLeft - prevSnakeLeft) > 2
+        const deltaPx = prevSnakeLeft !== null ? Math.abs(nextLeft - prevSnakeLeft) : 0
+        const hasMoved = prevSnakeLeft !== null && deltaPx > 2
 
         if (animate && hasMoved && snake.classList.contains('is-visible') && prevSnakeLeft !== null) {
+          // Constant speed (~8ms/px leading edge, ~10.2ms/px trailing edge) so far items take proportionally longer
+          const leadMs = Math.max(260, Math.round(deltaPx * 8))
+          const tailMs = Math.max(340, Math.round(deltaPx * 10.2))
+
+          snake.style.setProperty('--snake-lead-ms', `${leadMs}ms`)
+          snake.style.setProperty('--snake-tail-ms', `${tailMs}ms`)
           snake.classList.toggle('is-moving-right', nextLeft > prevSnakeLeft)
           snake.classList.toggle('is-moving-left', nextLeft < prevSnakeLeft)
           snake.classList.add('is-snaking')
@@ -64,7 +71,7 @@ export default {
           snakeTimer = setTimeout(() => {
             snake?.classList.remove('is-snaking')
             snakeTimer = null
-          }, 850)
+          }, tailMs + 40)
         } else if (!animate && !snakeTimer) {
           snake.classList.remove('is-moving-right', 'is-moving-left', 'is-snaking')
         }

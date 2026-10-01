@@ -199,15 +199,15 @@
 
 .vp-nav-snake.is-moving-right {
   transition:
-    --snake-right 520ms cubic-bezier(0.22, 1, 0.36, 1),
-    --snake-left 680ms cubic-bezier(0.22, 1, 0.36, 1),
+    --snake-right var(--snake-lead-ms, 520ms) cubic-bezier(0.22, 1, 0.36, 1),
+    --snake-left var(--snake-tail-ms, 680ms) cubic-bezier(0.22, 1, 0.36, 1),
     opacity 200ms ease;
 }
 
 .vp-nav-snake.is-moving-left {
   transition:
-    --snake-left 520ms cubic-bezier(0.22, 1, 0.36, 1),
-    --snake-right 680ms cubic-bezier(0.22, 1, 0.36, 1),
+    --snake-left var(--snake-lead-ms, 520ms) cubic-bezier(0.22, 1, 0.36, 1),
+    --snake-right var(--snake-tail-ms, 680ms) cubic-bezier(0.22, 1, 0.36, 1),
     opacity 200ms ease;
 }
 
