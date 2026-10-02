@@ -197,16 +197,21 @@ export default {
 
       let skipNextViewTransition = false
 
-      window.addEventListener(
-        'popstate',
-        (e: PopStateEvent & { hasUAVisualTransition?: boolean }) => {
-          if (e.hasUAVisualTransition) {
-            skipNextViewTransition = true
-            setTimeout(() => {
-              skipNextViewTransition = false
-            }, 600)
-          }
-        },
+      const markUAVisualTransition = (e: { hasUAVisualTransition?: boolean }) => {
+        if (e.hasUAVisualTransition) {
+          skipNextViewTransition = true
+          setTimeout(() => {
+            skipNextViewTransition = false
+          }, 600)
+        }
+      }
+
+      window.addEventListener('popstate', markUAVisualTransition as EventListener, {
+        capture: true,
+      })
+      ;(window as Window & { navigation?: EventTarget }).navigation?.addEventListener(
+        'navigate',
+        markUAVisualTransition as EventListener,
         { capture: true }
       )
 

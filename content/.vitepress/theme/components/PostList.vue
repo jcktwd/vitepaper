@@ -81,6 +81,12 @@ function getPostTransitionName(urlOrPath: string): string {
     .replace(/[^a-zA-Z0-9_-]/g, '-')
   return `post-title-${slug}`
 }
+
+function onBeforeTagLeave(el: Element) {
+  const htmlEl = el as HTMLElement
+  htmlEl.style.top = `${htmlEl.offsetTop}px`
+  htmlEl.style.width = `${htmlEl.offsetWidth}px`
+}
 </script>
 
 <template>
@@ -329,11 +335,16 @@ function getPostTransitionName(urlOrPath: string): string {
         </button>
       </div>
 
-      <ul class="space-y-6">
+      <TransitionGroup
+        name="vp-tag-flip"
+        tag="ul"
+        class="relative"
+        @before-leave="onBeforeTagLeave"
+      >
         <li
           v-for="post in filteredByTag"
           :key="post.url"
-          class="group border-b border-dashed border-border/60 pb-5 last:border-none"
+          class="group mb-6 border-b border-dashed border-border/60 pb-5"
         >
           <a :href="post.url" class="vp-post-card-link inline-block">
             <h3
@@ -353,7 +364,7 @@ function getPostTransitionName(urlOrPath: string): string {
             {{ post.description }}
           </p>
         </li>
-      </ul>
+      </TransitionGroup>
     </template>
   </div>
 </template>
