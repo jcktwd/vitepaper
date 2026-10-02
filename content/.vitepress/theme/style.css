@@ -563,6 +563,24 @@ a:hover > .vp-post-card-title {
   overflow-x: auto;
 }
 
+/* LaTeX / MathJax equations (inline $...$ and block $$...$$) */
+.vp-doc mjx-container:not([display="true"]) {
+  display: inline-block;
+  vertical-align: -0.12em;
+  margin: 0 0.1em;
+}
+
+.vp-doc mjx-container[display="true"] {
+  display: block;
+  text-align: center;
+  margin: 1.5rem 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  background: color-mix(in srgb, var(--background-soft) 60%, transparent);
+  border: 1px dashed var(--border);
+  border-radius: 0.375rem;
+}
+
 /* ==========================================================================
    AstroPaper Post Footer: Back to Top (Floating + Docking), Tags & ShareLinks
    ========================================================================== */
