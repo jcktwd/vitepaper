@@ -19,8 +19,9 @@ let lastTapTime = 0
 
 function prepareSvgMarkup(svgEl: SVGSVGElement): string {
   const clone = svgEl.cloneNode(true) as SVGSVGElement
+  const origId = clone.getAttribute('id') || ''
 
-  // Determine aspect ratio from viewBox or bounding box
+  // Determine aspect ratio from viewBox or live bounding box
   const vb = clone.getAttribute('viewBox')
   let vbWidth = 800
   let vbHeight = 500
@@ -43,21 +44,27 @@ function prepareSvgMarkup(svgEl: SVGSVGElement): string {
     }
   }
 
-  const maxW = Math.max(300, window.innerWidth * 0.9)
-  const maxH = Math.max(240, window.innerHeight * 0.8)
+  const maxW = Math.max(280, window.innerWidth * 0.86 - 48)
+  const maxH = Math.max(220, window.innerHeight * 0.76 - 48)
   const ratio = Math.min(maxW / vbWidth, maxH / vbHeight)
 
   const fittedW = Math.round(vbWidth * ratio)
   const fittedH = Math.round(vbHeight * ratio)
 
-  clone.removeAttribute('style')
-  clone.setAttribute('width', `${fittedW}px`)
-  clone.setAttribute('height', `${fittedH}px`)
-  clone.style.maxWidth = 'none'
-  clone.style.maxHeight = 'none'
-  clone.style.display = 'block'
+  clone.setAttribute('width', `${fittedW}`)
+  clone.setAttribute('height', `${fittedH}`)
+  clone.setAttribute(
+    'style',
+    `width: ${fittedW}px !important; height: ${fittedH}px !important; max-width: none !important; max-height: none !important; display: block;`
+  )
 
-  return clone.outerHTML
+  let html = clone.outerHTML
+  if (origId) {
+    const zoomId = `${origId}-zoom`
+    html = html.replaceAll(origId, zoomId)
+  }
+
+  return html
 }
 
 async function initPanzoom() {
@@ -109,6 +116,13 @@ function openMermaid(svgEl: SVGSVGElement, title = 'Diagram') {
   void initPanzoom()
 }
 
+function onOpenMermaidEvent(e: Event) {
+  const customEvent = e as CustomEvent<SVGSVGElement>
+  if (customEvent.detail) {
+    openMermaid(customEvent.detail)
+  }
+}
+
 function close() {
   if (!isOpen.value) return
   isOpen.value = false
@@ -145,14 +159,14 @@ function onStagePointerUp(e: PointerEvent) {
   const dx = e.clientX - pointerDownPos.x
   const dy = e.clientY - pointerDownPos.y
   const dist = Math.hypot(dx, dy)
-  const downTarget = pointerDownPos.target as HTMLElement | null
+  const downTarget = pointerDownPos.target as Element | null
   pointerDownPos = null
 
   if (dist > 6) return
 
   // Double-tap / double-click on the media toggles 1x <-> 2.5x zoom
   const now = performance.now()
-  const isInsideMedia = downTarget?.closest('.vp-lightbox-target')
+  const isInsideMedia = downTarget?.closest?.('.vp-lightbox-target')
   if (isInsideMedia && now - lastTapTime < 300) {
     lastTapTime = 0
     if (scale.value > 1.35) {
@@ -172,24 +186,18 @@ function onStagePointerUp(e: PointerEvent) {
 
 function onDocumentClick(e: MouseEvent) {
   if (isOpen.value) return
-  const target = e.target as HTMLElement | null
+  const rawTarget = e.target
+  const target =
+    rawTarget instanceof Element
+      ? rawTarget
+      : rawTarget instanceof Node
+        ? rawTarget.parentElement
+        : null
   if (!target) return
 
-  // 1. Check if user clicked inside a .vp-doc .mermaid diagram or its expand button
-  const mermaidContainer = target.closest<HTMLElement>('.vp-doc .mermaid')
-  if (mermaidContainer) {
-    const svgEl = mermaidContainer.querySelector<SVGSVGElement>('svg')
-    if (svgEl) {
-      e.preventDefault()
-      openMermaid(svgEl)
-      return
-    }
-  }
-
-  // 2. Check if user clicked an article image
+  // Check if user clicked an article image
   const imgEl = target.closest<HTMLImageElement>('.vp-doc img:not(.vp-inline-icon-img)')
   if (imgEl && imgEl.src) {
-    // Don't hijack if image is inside an anchor linking to another page
     const parentLink = imgEl.closest('a')
     if (parentLink && parentLink.getAttribute('href')) return
     e.preventDefault()
@@ -216,11 +224,13 @@ function onKeyDown(e: KeyboardEvent) {
 
 onMounted(() => {
   document.addEventListener('click', onDocumentClick)
+  window.addEventListener('vp:open-mermaid', onOpenMermaidEvent)
   window.addEventListener('keydown', onKeyDown)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick)
+  window.removeEventListener('vp:open-mermaid', onOpenMermaidEvent)
   window.removeEventListener('keydown', onKeyDown)
   if (panzoomInstance) {
     panzoomInstance.destroy()
@@ -245,8 +255,8 @@ onBeforeUnmount(() => {
           ref="stageRef"
           class="vp-lightbox-stage"
           @wheel.prevent="onWheel"
-          @pointerdown="onStagePointerDown"
-          @pointerup="onStagePointerUp"
+          @pointerdown.capture="onStagePointerDown"
+          @pointerup.capture="onStagePointerUp"
         >
           <div
             ref="targetRef"
