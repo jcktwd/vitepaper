@@ -54,7 +54,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="isSyncedDoc" class="mb-8 border-b border-dashed border-border pb-6">
+  <div v-if="isSyncedDoc" id="post-summary" class="mb-8 border-b border-dashed border-border pb-6 scroll-mt-24">
     <!-- AstroPaper Top Reading Progress Bar -->
     <div class="fixed top-0 left-0 z-50 h-1 w-full bg-transparent">
       <div
@@ -92,7 +92,8 @@ onUnmounted(() => {
 
     <!-- Title + Outline Icon -->
     <h1
-      class="vp-post-title"
+      id="post-title"
+      class="vp-post-title scroll-mt-24"
       :style="{ viewTransitionName: postTransitionName }"
     >
       <span v-if="frontmatter.icon" class="mr-2">{{ frontmatter.icon }}</span>

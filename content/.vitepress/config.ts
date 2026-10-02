@@ -390,12 +390,58 @@ export default defineConfig({
     search: {
       provider: 'local',
       options: {
+        miniSearch: {
+          searchOptions: {
+            fuzzy: 0.2,
+            prefix: true,
+            boost: {
+              title: 8,
+              titles: 5,
+              text: 1,
+            },
+          },
+        },
         _render(src: string, env: any, md: any) {
           const html = md.render(src, env)
-          if (env.frontmatter?.draft || env.relativePath === 'drafts.md') {
+          if (
+            env.frontmatter?.draft ||
+            env.relativePath === 'drafts.md' ||
+            env.frontmatter?.search === false
+          ) {
             return ''
           }
-          return html
+
+          const rawTitle = env.frontmatter?.title ? String(env.frontmatter.title).trim() : ''
+          if (!rawTitle) {
+            return html
+          }
+
+          const icon = env.frontmatter?.icon ? `${String(env.frontmatter.icon).trim()} ` : ''
+          const fullTitle = `${icon}${rawTitle}`
+          const description = env.frontmatter?.description
+            ? String(env.frontmatter.description).trim()
+            : ''
+          const tags: string[] = Array.isArray(env.frontmatter?.tags)
+            ? env.frontmatter.tags.map((t: unknown) => String(t).trim()).filter(Boolean)
+            : []
+
+          const tagsDisplay = tags.map((t) => `#${t}`).join(' ')
+          const tagsSearchable = tags.map((t) => `#${t} ${t.replace(/-/g, ' ')}`).join(' ')
+
+          const prefixParts: string[] = [
+            `<h1 id="post-title">${escapeXml(fullTitle)} <a class="header-anchor" href="#post-title">&#8203;</a></h1>`,
+            `<p>${escapeXml(rawTitle)} ${escapeXml(description)} ${escapeXml(tagsSearchable)}</p>`,
+          ]
+
+          const metaSummary = [tagsDisplay, description].filter(Boolean).join(' · ')
+          if (metaSummary) {
+            prefixParts.push(
+              `<h6 id="post-summary">${escapeXml(metaSummary)} <a class="header-anchor" href="#post-summary">&#8203;</a></h6>`,
+              `<p>${escapeXml(rawTitle)} ${escapeXml(tagsSearchable)} ${escapeXml(description)}</p>`
+            )
+          }
+
+          return `${prefixParts.join('\n')}\n${html}`
         },
       },
     },
