@@ -96,6 +96,15 @@ async function initPanzoom() {
   }) as EventListener)
 }
 
+let hasPushedState = false
+let ignoringNextPopState = false
+
+function pushLightboxState() {
+  if (hasPushedState || typeof window === 'undefined') return
+  window.history.pushState({ ...(window.history.state || {}), vpLightbox: true }, '')
+  hasPushedState = true
+}
+
 function openImage(src: string, alt: string) {
   mediaType.value = 'image'
   imgSrc.value = src
@@ -103,6 +112,7 @@ function openImage(src: string, alt: string) {
   svgContent.value = ''
   isOpen.value = true
   document.body.style.overflow = 'hidden'
+  pushLightboxState()
   void initPanzoom()
 }
 
@@ -113,6 +123,7 @@ function openMermaid(svgEl: SVGSVGElement, title = 'Diagram') {
   imgAlt.value = title
   isOpen.value = true
   document.body.style.overflow = 'hidden'
+  pushLightboxState()
   void initPanzoom()
 }
 
@@ -123,13 +134,36 @@ function onOpenMermaidEvent(e: Event) {
   }
 }
 
-function close() {
+function closeInternal() {
   if (!isOpen.value) return
   isOpen.value = false
   document.body.style.overflow = ''
   if (panzoomInstance) {
     panzoomInstance.destroy()
     panzoomInstance = null
+  }
+}
+
+function close() {
+  if (!isOpen.value) return
+  closeInternal()
+  if (hasPushedState && typeof window !== 'undefined') {
+    hasPushedState = false
+    ignoringNextPopState = true
+    window.history.back()
+  }
+}
+
+function onPopState(e: PopStateEvent) {
+  if (ignoringNextPopState) {
+    ignoringNextPopState = false
+    e.stopImmediatePropagation()
+    return
+  }
+  if (isOpen.value) {
+    hasPushedState = false
+    e.stopImmediatePropagation()
+    closeInternal()
   }
 }
 
@@ -228,12 +262,14 @@ onMounted(() => {
   document.addEventListener('click', onDocumentClick)
   window.addEventListener('vp:open-mermaid', onOpenMermaidEvent)
   window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('popstate', onPopState, true)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick)
   window.removeEventListener('vp:open-mermaid', onOpenMermaidEvent)
   window.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener('popstate', onPopState, true)
   if (panzoomInstance) {
     panzoomInstance.destroy()
     panzoomInstance = null

@@ -195,12 +195,31 @@ export default {
         setTimeout(() => updateNavSnake(null, false), 50)
       })
 
+      let skipNextViewTransition = false
+
+      window.addEventListener(
+        'popstate',
+        (e: PopStateEvent & { hasUAVisualTransition?: boolean }) => {
+          const isMobileViewport =
+            window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768
+          if (e.hasUAVisualTransition || isMobileViewport) {
+            skipNextViewTransition = true
+            setTimeout(() => {
+              skipNextViewTransition = false
+            }, 600)
+          }
+        },
+        { capture: true }
+      )
+
       router.onAfterPageLoad = async () => {
         if (
+          skipNextViewTransition ||
           !router.route.component ||
           !('startViewTransition' in document) ||
           window.matchMedia('(prefers-reduced-motion: reduce)').matches
         ) {
+          skipNextViewTransition = false
           await nextTick()
           updateNavSnake(null, true)
           return
