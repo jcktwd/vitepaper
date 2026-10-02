@@ -196,12 +196,14 @@ function onDocumentClick(e: MouseEvent) {
   if (!target) return
 
   // Check if user clicked an article image
-  const imgEl = target.closest<HTMLImageElement>('.vp-doc img:not(.vp-inline-icon-img)')
-  if (imgEl && imgEl.src) {
+  const imgEl = target.closest<HTMLImageElement>(
+    '.vp-doc img:not(.vp-inline-icon-img):not(.nolebase-enhanced-img)'
+  )
+  if (imgEl && (imgEl.dataset.src || imgEl.src)) {
     const parentLink = imgEl.closest('a')
     if (parentLink && parentLink.getAttribute('href')) return
     e.preventDefault()
-    openImage(imgEl.currentSrc || imgEl.src, imgEl.alt || '')
+    openImage(imgEl.dataset.src || imgEl.currentSrc || imgEl.src, imgEl.alt || '')
   }
 }
 

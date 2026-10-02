@@ -1,0 +1,34 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Canvas (AstroPaper Dark Slate) -->
+  <rect width="1200" height="630" fill="#212737"/>
+
+  <!-- Subtle Inner Dashed Frame -->
+  <rect x="36" y="36" width="1128" height="542" rx="12" fill="#272e40" fill-opacity="0.55" stroke="#ff6b01" stroke-opacity="0.4" stroke-width="2" stroke-dasharray="8 8"/>
+
+  <!-- Top-Right Brand Mark (Door Exit Icon in AstroPaper Orange) -->
+  <g transform="translate(1060, 66) scale(2.4)" stroke="#ff6b01" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M13 4h3a2 2 0 0 1 2 2v14"/>
+    <path d="M2 20h3"/>
+    <path d="M13 20h9"/>
+    <path d="M10 12v.01"/>
+    <path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/>
+  </g>
+
+  <!-- Primary Category / Tag Pill -->
+  <text fill="#ff6b01" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="30" font-weight="bold" letter-spacing="0.02em"><tspan x="76" y="160">{{category}}</tspan></text>
+
+  <!-- Post Title (Up to 3 Lines) -->
+  <text fill="#eaedf3" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="56" font-weight="bold" letter-spacing="-0.01em"><tspan x="76" y="250">{{line1}} </tspan></text>
+  <text fill="#eaedf3" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="56" font-weight="bold" letter-spacing="-0.01em"><tspan x="76" y="327">{{line2}} </tspan></text>
+  <text fill="#eaedf3" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="56" font-weight="bold" letter-spacing="-0.01em"><tspan x="76" y="404">{{line3}}</tspan></text>
+
+  <!-- Bottom Divider Line -->
+  <line x1="76" y1="484" x2="1124" y2="484" stroke="#ab4b08" stroke-opacity="0.45" stroke-width="2" stroke-dasharray="6 6"/>
+
+  <!-- Site Name (Left) & Author / Domain (Right) Footer -->
+  <text fill="#eaedf3" fill-opacity="0.95" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="26" font-weight="bold" letter-spacing="0em"><tspan x="76" y="534">{{siteName}}</tspan></text>
+  <text fill="#eaedf3" fill-opacity="0.65" xml:space="preserve" style="white-space: pre; text-anchor: end;" font-family="Inter" font-size="24" letter-spacing="0em"><tspan x="1124" y="534">{{siteDescription}}</tspan></text>
+
+  <!-- Bottom Accent Bar -->
+  <rect y="614" width="1200" height="16" fill="#ff6b01"/>
+</svg>

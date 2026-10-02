@@ -43,6 +43,11 @@ The visual design, color palettes (Warm Parchment Light & Slate/Orange Dark), ty
 * **Brand Logos, Iconify Icons & Social Links in Prose**:
   * Render your configured social links bar anywhere in an Outline document using inline code `` `integration: socials` ``.
   * Embed any [Simple Icons](https://simpleicons.org/) brand logo or [Iconify / Icônes](https://icones.js.org/) icon inline in prose using `` `icon:<brand>` `` (e.g. `` `icon:github` ``, `` `icon:docker` ``, `` `icon:linux` ``, `` `icon:unraid` ``, `` `icon:vue` ``) or `` `icon:<collection>:<name>` `` (e.g. `` `icon:lucide:cpu` ``, `` `icon:majesticons:door-exit` ``).
+* **Nólëbase Enhancements (Social Cards, Link Previews & ThumbHash Images)**:
+  * **Automatic OpenGraph Social Cards & Meta Tags** (`@nolebase/vitepress-plugin-og-image` + `@nolebase/vitepress-plugin-meta`): Generates custom AstroPaper-branded `1200×630` PNG social cards (`og-*.png` via `content/public/og-template.svg`) and injects `og:*` and `twitter:*` meta tags for every page and post at build time.
+  * **Inline Link Hover Previews** (`@nolebase/vitepress-plugin-inline-link-preview`): Hovering over internal `/posts/...` links opens a floating Wikipedia/Obsidian-style preview card of the target article.
+  * **ThumbHash Blurred Image Placeholders** (`@nolebase/vitepress-plugin-thumbnail-hash` + `@nolebase/markdown-it-unlazy-img`): Pre-computes compact ThumbHash placeholders at build time (including `.webp`, `.png`, and `.jpg` attachments) and cross-fades smoothly into the full-resolution image as you scroll.
+  * **Animated Highlighter Marks & Targeted Heading Flash** (`@nolebase/vitepress-plugin-enhanced-mark` + `@nolebase/vitepress-plugin-highlight-targeted-heading`): Sweeps `==highlighted text==` with an animated marker effect and flashes headings when navigating to `#anchor` links.
 * **Zero-Downtime Webhook Rebuilds (`scripts/server.ts`)**:
   * Serves the static site via [`sirv`](https://github.com/lukeed/sirv) with `ETag` and immutable asset caching, alongside a `POST /api/webhook/outline` listener.
   * Verifies Outline's `Outline-Signature` (`HMAC-SHA256`), debounces rapid webhook bursts (3s), builds into a staging directory (`.vitepress/dist-next`), and atomically swaps `.vitepress/dist` with zero downtime.

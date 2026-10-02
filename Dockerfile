@@ -2,8 +2,8 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-# Install pnpm globally
-RUN npm install -g pnpm@latest
+# Install fonts for OG image SVG rasterization and pnpm globally
+RUN apk add --no-cache fontconfig ttf-dejavu && npm install -g pnpm@latest
 
 # Copy package manifests first for layer caching
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./

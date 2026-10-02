@@ -500,6 +500,20 @@ a:hover > .vp-post-card-title {
   margin: 0 auto;
 }
 
+.vp-doc figure:has(> img.nolebase-enhanced-img),
+.vp-doc p:has(> img.nolebase-enhanced-img) {
+  position: relative;
+}
+
+.vp-doc figure > img.nolebase-enhanced-img {
+  top: 0;
+  bottom: auto;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  pointer-events: none;
+}
+
 .vp-doc figure figcaption {
   margin-top: 0.55rem;
   font-size: 0.8125rem;
@@ -509,9 +523,9 @@ a:hover > .vp-post-card-title {
   text-align: center;
 }
 
-/* @mdit/plugin-mark: ==highlighted text== from Outline */
+/* @mdit/plugin-mark + @nolebase/vitepress-plugin-enhanced-mark: ==highlighted text== from Outline */
 .vp-doc mark {
-  background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  --vp-nolebase-mark-bg-color: color-mix(in srgb, var(--accent) 28%, transparent);
   color: var(--foreground);
   padding: 0.1em 0.3em;
   border-radius: 0.25rem;

@@ -7,6 +7,11 @@ import { figure } from '@mdit/plugin-figure'
 import { imgSize, legacyImgSize, obsidianImgSize } from '@mdit/plugin-img-size'
 import { mark } from '@mdit/plugin-mark'
 import { tasklist } from '@mdit/plugin-tasklist'
+import { UnlazyImages } from '@nolebase/markdown-it-unlazy-img'
+import { InlineLinkPreviewElementTransform } from '@nolebase/vitepress-plugin-inline-link-preview/markdown-it'
+import { transformHeadMeta } from '@nolebase/vitepress-plugin-meta/vitepress'
+import { buildEndGenerateOpenGraphImages } from '@nolebase/vitepress-plugin-og-image/vitepress'
+import { ThumbnailHashImages } from '@nolebase/vitepress-plugin-thumbnail-hash/vite'
 import tailwindcss from '@tailwindcss/vite'
 import YAML from 'yaml'
 import siteConfig from '../../vitepaper.config.ts'
@@ -99,6 +104,123 @@ const postsActiveMatch =
     ? `^/posts(?:$|/(?!(?:${navSlugs.join('|')})(?:$|/|\\.html)))`
     : '^/posts'
 
+/**
+ * Wraps `@nolebase/vitepress-plugin-thumbnail-hash`'s Vite plugin so that:
+ * 1. Concurrent Vite client + SSR builds share a single execution promise instead of racing on `map.json`
+ * 2. `.webp` images under `content/public/` are also ThumbHashed via `canvaskit-wasm` + `thumbhash`
+ * 3. Every `"public/*"` entry in `map.json` is aliased without the `"public/"` prefix (e.g. `"attachments/..."`)
+ *    before `configResolved` resolves, so `@nolebase/markdown-it-unlazy-img` finds `/attachments/...` URLs cleanly.
+ */
+function createVitePaperThumbnailHashPlugin() {
+  const basePlugin = ThumbnailHashImages() as any
+  const origConfigResolved = basePlugin.configResolved
+  let sharedRunPromise: Promise<void> | null = null
+
+  return {
+    ...basePlugin,
+    async configResolved(config: any) {
+      if (!sharedRunPromise) {
+        sharedRunPromise = (async () => {
+          if (typeof origConfigResolved === 'function') {
+            await origConfigResolved.call(this, config)
+          }
+          const mapPath = path.join(
+            config.vitepress.cacheDir,
+            '@nolebase',
+            'vitepress-plugin-thumbnail-hash',
+            'thumbhashes',
+            'map.json'
+          )
+          if (!existsSync(mapPath)) return
+          const raw = await fs.readFile(mapPath, 'utf8')
+          const map = JSON.parse(raw) as Record<string, any>
+          let changed = false
+
+          // Also hash any .webp files in content/public/attachments/ (since @nolebase only globs jpg/jpeg/png by default)
+          const attachmentsDir = path.join(PUBLIC_DIR, 'attachments')
+          if (existsSync(attachmentsDir)) {
+            const webpFiles = readdirSync(attachmentsDir).filter((f) =>
+              f.toLowerCase().endsWith('.webp')
+            )
+            if (webpFiles.length > 0) {
+              const { createRequire } = await import('node:module')
+              const { pathToFileURL } = await import('node:url')
+              const pluginReq = createRequire(
+                createRequire(import.meta.url).resolve('@nolebase/vitepress-plugin-thumbnail-hash')
+              )
+              const CanvasKitInit = (
+                await import(pathToFileURL(pluginReq.resolve('canvaskit-wasm')).href)
+              ).default
+              const { rgbaToThumbHash, thumbHashToDataURL } = await import(
+                pathToFileURL(pluginReq.resolve('thumbhash')).href
+              )
+              const canvasKit = await CanvasKitInit()
+
+              for (const file of webpFiles) {
+                const relKey = `public/attachments/${file}`
+                if (map[relKey]) continue
+                try {
+                  const buf = await fs.readFile(path.join(attachmentsDir, file))
+                  const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
+                  const img = canvasKit.MakeImageFromEncoded(ab)
+                  if (!img) continue
+                  const origW = img.width()
+                  const origH = img.height()
+                  const scale = 100 / Math.max(origW, origH)
+                  const w = Math.round(origW * scale)
+                  const h = Math.round(origH * scale)
+                  const canvas = canvasKit.MakeCanvas(w, h)
+                  const ctx = canvas.getContext('2d')
+                  ctx.drawImage(img, 0, 0, w, h)
+                  const pixels = ctx.getImageData(0, 0, w, h)
+                  const hashBin = rgbaToThumbHash(pixels.width, pixels.height, pixels.data)
+                  const dataBase64 = Buffer.from(hashBin).toString('base64')
+                  const dataUrl = await thumbHashToDataURL(hashBin)
+                  map[relKey] = {
+                    dataBase64,
+                    dataUrl,
+                    width: w,
+                    height: h,
+                    originalWidth: origW,
+                    originalHeight: origH,
+                    assetFileName: relKey,
+                    assetFullFileName: `content/${relKey}`,
+                  }
+                  changed = true
+                } catch {
+                  // Ignore unreadable webp
+                }
+              }
+            }
+          }
+
+          for (const [key, val] of Object.entries(map)) {
+            if (key.startsWith('public/')) {
+              const publicAlias = key.slice('public/'.length)
+              if (!(publicAlias in map)) {
+                map[publicAlias] = val
+                changed = true
+              }
+              if (publicAlias.endsWith('.webp') && !(`${publicAlias}.png` in map)) {
+                map[`${publicAlias}.png`] = val
+                changed = true
+              }
+            }
+            if (key.endsWith('.webp') && !(`${key}.png` in map)) {
+              map[`${key}.png`] = val
+              changed = true
+            }
+          }
+          if (changed) {
+            await fs.writeFile(mapPath, JSON.stringify(map, null, 2), 'utf8')
+          }
+        })()
+      }
+      await sharedRunPromise
+    },
+  }
+}
+
 export default defineConfig({
   title: siteConfig.site.title,
   description: siteConfig.site.description,
@@ -134,8 +256,40 @@ export default defineConfig({
     ],
   ],
 
+  async transformHead(context) {
+    let head = [...context.head]
+    const returnedHead = await transformHeadMeta({
+      handleExcerpt: async (excerpt, ctx) => {
+        const fmDesc = ctx.pageData.frontmatter?.description
+        if (typeof fmDesc === 'string' && fmDesc.trim()) {
+          return fmDesc.trim()
+        }
+        return excerpt || siteConfig.site.description
+      },
+    })(head, context)
+    if (typeof returnedHead !== 'undefined') {
+      head = returnedHead
+    }
+    return head
+  },
+
   vite: {
-    plugins: [tailwindcss() as any],
+    plugins: [tailwindcss() as any, createVitePaperThumbnailHashPlugin()],
+    optimizeDeps: {
+      exclude: [
+        '@nolebase/vitepress-plugin-inline-link-preview/client',
+        '@nolebase/vitepress-plugin-thumbnail-hash/client',
+        '@nolebase/ui',
+      ],
+    },
+    ssr: {
+      noExternal: [
+        '@nolebase/vitepress-plugin-inline-link-preview',
+        '@nolebase/vitepress-plugin-highlight-targeted-heading',
+        '@nolebase/vitepress-plugin-thumbnail-hash',
+        '@nolebase/ui',
+      ],
+    },
   },
 
   markdown: {
@@ -150,13 +304,85 @@ export default defineConfig({
       conf: 'ini',
     },
     config(md) {
-      // 0. Outline Markdown parity plugins (tasklists, ==highlight==, image sizing, and <figure> captions)
+      // 0. Outline Markdown parity plugins (tasklists, ==highlight==, image sizing, <figure> captions, inline link previews, & ThumbHash lazy images)
       md.use(tasklist)
       md.use(mark)
       md.use(legacyImgSize)
       md.use(imgSize)
       md.use(obsidianImgSize)
       md.use(figure, { focusable: false })
+      md.use(InlineLinkPreviewElementTransform)
+      md.use(UnlazyImages(), {
+        imgElementTag: 'NolebaseUnlazyImg',
+      })
+
+      // Ensure markdown-it image tokens populate `alt` in `token.attrs` so UnlazyImages forwards the alt text to <NolebaseUnlazyImg>,
+      // support `.webp` images in UnlazyImages, preserve proportional aspect ratio when only `width` or `height` is set,
+      // and ensure `env.relativePath` is present when `createContentLoader` renders markdown.
+      const unlazyImageRule = md.renderer.rules.image!
+      md.renderer.rules.image = (tokens, idx, options, env, self) => {
+        const token = tokens[idx]
+        if (!token.attrGet('alt') && token.content) {
+          token.attrSet('alt', token.content)
+        }
+        if (env && !env.path && !env.relativePath) {
+          env.relativePath = 'index.md'
+        }
+        const origSrc = token.attrGet('src')
+        const explicitWidth = token.attrGet('width')
+        const explicitHeight = token.attrGet('height')
+
+        // Temporarily clear single-axis width/height so UnlazyImages emits the natural originalWidth & originalHeight
+        if (explicitWidth && !explicitHeight && token.attrs) {
+          token.attrs = token.attrs.filter(([k]) => k !== 'width')
+        } else if (explicitHeight && !explicitWidth && token.attrs) {
+          token.attrs = token.attrs.filter(([k]) => k !== 'height')
+        }
+
+        const isLocalWebp =
+          origSrc && !/^(?:[a-z]+:|\/\/)/i.test(origSrc) && origSrc.toLowerCase().endsWith('.webp')
+        if (isLocalWebp) {
+          token.attrSet('src', `${origSrc}.png`)
+        }
+        let rendered = unlazyImageRule(tokens, idx, options, env, self)
+        if (isLocalWebp && origSrc) {
+          token.attrSet('src', origSrc)
+          rendered = rendered.replace(/\.webp\.png"/g, '.webp"')
+        }
+
+        // Restore explicit single-axis dimension and compute proportional counterpart from natural dimensions
+        if (explicitWidth && !explicitHeight) {
+          token.attrSet('width', explicitWidth)
+          const m = rendered.match(/\bwidth="(\d+)"\s+height="(\d+)"/)
+          if (m) {
+            const natW = Number(m[1])
+            const natH = Number(m[2])
+            const targetW = Number(explicitWidth)
+            if (natW > 0 && natH > 0 && targetW > 0) {
+              const targetH = Math.max(1, Math.round((targetW * natH) / natW))
+              rendered = rendered
+                .replace(/\bautoSizes="true"/, 'autoSizes="false"')
+                .replace(/\bwidth="\d+"\s+height="\d+"/, `width="${targetW}" height="${targetH}"`)
+            }
+          }
+        } else if (explicitHeight && !explicitWidth) {
+          token.attrSet('height', explicitHeight)
+          const m = rendered.match(/\bwidth="(\d+)"\s+height="(\d+)"/)
+          if (m) {
+            const natW = Number(m[1])
+            const natH = Number(m[2])
+            const targetH = Number(explicitHeight)
+            if (natW > 0 && natH > 0 && targetH > 0) {
+              const targetW = Math.max(1, Math.round((targetH * natW) / natH))
+              rendered = rendered
+                .replace(/\bautoSizes="true"/, 'autoSizes="false"')
+                .replace(/\bwidth="\d+"\s+height="\d+"/, `width="${targetW}" height="${targetH}"`)
+            }
+          }
+        }
+
+        return rendered
+      }
 
       // 1. Normalize Outline ProseMirror inline-code + bold serialization quirks, resized image titles, & tabbed code blocks
       md.core.ruler.before('normalize', 'outline-prosemirror-fixes', (state) => {
@@ -537,5 +763,44 @@ ${itemsXml}
 </rss>
 `
     await fs.writeFile(path.join(site.outDir, 'rss.xml'), rssXml, 'utf8')
+
+    // Populate virtual sidebar entries so @nolebase/vitepress-plugin-og-image discovers all pages & posts
+    site.site.themeConfig.sidebar = [
+      { text: siteConfig.site.title, link: '/' },
+      { text: 'Posts', link: '/posts' },
+      { text: 'Tags', link: '/tags' },
+      ...(existsSync(path.join(site.srcDir, 'drafts.md')) ? [{ text: 'Drafts', link: '/drafts' }] : []),
+      ...posts.map((p) => ({
+        text: p.frontmatter.title || 'Untitled',
+        link: p.url.replace(/\.html$/, ''),
+      })),
+    ]
+
+    const origDescription = site.site.description
+    const domainLabel = baseUrl.replace(/^https?:\/\//, '')
+    site.site.description = siteConfig.site.author
+      ? `${siteConfig.site.author}  •  ${domainLabel}`
+      : domainLabel
+
+    try {
+      await buildEndGenerateOpenGraphImages({
+        baseUrl,
+        maxCharactersPerLine: 26,
+        category: {
+          byCustomGetter: (page) => {
+            const tags = page.frontmatter?.tags
+            if (Array.isArray(tags) && tags.length > 0 && tags[0]) {
+              return `#${String(tags[0]).trim()}`
+            }
+            if (page.sourceFilePath.startsWith('/posts/')) {
+              return 'Article'
+            }
+            return siteConfig.site.title
+          },
+        },
+      })(site)
+    } finally {
+      site.site.description = origDescription
+    }
   },
 })
