@@ -5,6 +5,7 @@ import PostHeader from './components/PostHeader.vue'
 import PostFooter from './components/PostFooter.vue'
 import PostList from './components/PostList.vue'
 import Mermaid from './components/Mermaid.vue'
+import MediaLightbox from './components/MediaLightbox.vue'
 import SocialLinks from './components/SocialLinks.vue'
 import './style.css'
 
@@ -14,6 +15,7 @@ export default {
     return h(DefaultTheme.Layout, null, {
       'doc-before': () => h(PostHeader),
       'doc-footer-before': () => h(PostFooter),
+      'layout-bottom': () => h(MediaLightbox),
     })
   },
   enhanceApp({ app, router }) {

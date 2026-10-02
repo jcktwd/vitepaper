@@ -166,6 +166,9 @@ importers:
 
   .:
     dependencies:
+      '@panzoom/panzoom':
+        specifier: ^4.6.2
+        version: 4.6.2
       sirv:
         specifier: ^3.0.2
         version: 3.0.2
@@ -510,6 +513,9 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [glibc]
+
+  '@panzoom/panzoom@4.6.2':
+    resolution: {integrity: sha512-Zn3B5/hwa6eYIPRSKX0xf2clv8nviTX8AnAU5kU/EugiTDhG41ya2wlBqYrZJYCWQROr/5XkWObZhIkepi89qw==}
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
@@ -1997,6 +2003,8 @@ snapshots:
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
+
+  '@panzoom/panzoom@4.6.2': {}
 
   '@polka/url@1.0.0-next.29': {}
 
