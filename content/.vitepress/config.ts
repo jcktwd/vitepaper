@@ -3,6 +3,10 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createContentLoader, defineConfig, type SiteConfig } from 'vitepress'
+import { figure } from '@mdit/plugin-figure'
+import { imgSize, legacyImgSize, obsidianImgSize } from '@mdit/plugin-img-size'
+import { mark } from '@mdit/plugin-mark'
+import { tasklist } from '@mdit/plugin-tasklist'
 import tailwindcss from '@tailwindcss/vite'
 import YAML from 'yaml'
 import siteConfig from '../../vitepaper.config.ts'
@@ -146,12 +150,27 @@ export default defineConfig({
       conf: 'ini',
     },
     config(md) {
-      // 1. Normalize Outline ProseMirror inline-code + bold serialization quirks & tabbed code blocks
+      // 0. Outline Markdown parity plugins (tasklists, ==highlight==, image sizing, and <figure> captions)
+      md.use(tasklist)
+      md.use(mark)
+      md.use(legacyImgSize)
+      md.use(imgSize)
+      md.use(obsidianImgSize)
+      md.use(figure, { focusable: false })
+
+      // 1. Normalize Outline ProseMirror inline-code + bold serialization quirks, resized image titles, & tabbed code blocks
       md.core.ruler.before('normalize', 'outline-prosemirror-fixes', (state) => {
         state.src = state.src
           .replace(/\*\*`\*\*([^`\n]+)\*\*`\*\*/g, '`$1`')
           .replace(/`\*\*([^`\n]+)\*\*`/g, '**`$1`**')
           .replace(/`([^`\n]+)`{2}\*([^*\n]+)\*`/g, '`$1$2`')
+          // Outline stores resized image dimensions in the Markdown image title: ![alt](url " =360x240")
+          // Convert to legacyImgSize syntax (![alt](url =360x240)) so @mdit/plugin-img-size sets width/height
+          // and @mdit/plugin-figure uses the alt text for <figcaption>.
+          .replace(
+            /(!\[[^\]]*\]\([^)\s"]+)[ \t]+"\s*(?:source=\S+\s*)?(?:(?:right-50|left-50|full-width)\s*)?(=\d*%?x\d*%?)\s*"\)/g,
+            '$1 $2)'
+          )
 
         // Transform consecutive fenced code blocks with `tab` (and optional named `tab-group`) metadata
         // into native VitePress `::: code-group` containers.

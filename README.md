@@ -15,6 +15,7 @@ The visual design, color palettes (Warm Parchment Light & Slate/Orange Dark), ty
   * Automatically downloads private `/api/attachments.redirect?id=...` images and file attachments using your `OUTLINE_API_KEY` and caches them locally in `content/public/attachments/`.
   * Recursively syncs nested subfolders and applies subfolder titles as automatic `#tags`.
   * Normalizes Outline ProseMirror Markdown quirks (bold inline code, named Outline icons, `:::warning` / `:::tip` / `:::info` / `:::danger` callouts, and `mermaid` diagrams).
+  * Supports Outline image `<figure>` captions (`@mdit/plugin-figure`), resized images (`=WidthxHeight` via `@mdit/plugin-img-size`), `==highlighted text==` (`@mdit/plugin-mark`), and `- [x]` task list checkboxes (`@mdit/plugin-tasklist`).
 * **Custom Frontmatter & Navbar Pinning in Outline**:
   * Add an optional ```` ```yaml ```` code block at the very top of any Outline document to configure metadata or pin pages to the top navigation bar (automatically stripped from the rendered article body):
     ````markdown

@@ -490,6 +490,56 @@ a:hover > .vp-post-card-title {
   border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
 }
 
+/* @mdit/plugin-figure: standalone images with optional Outline caption */
+.vp-doc figure {
+  margin: 1.75rem auto;
+  text-align: center;
+}
+
+.vp-doc figure img:not(.vp-inline-icon-img) {
+  margin: 0 auto;
+}
+
+.vp-doc figure figcaption {
+  margin-top: 0.55rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  font-style: italic;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+/* @mdit/plugin-mark: ==highlighted text== from Outline */
+.vp-doc mark {
+  background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--foreground);
+  padding: 0.1em 0.3em;
+  border-radius: 0.25rem;
+}
+
+/* @mdit/plugin-tasklist: Outline checklists (- [x] / - [ ]) */
+.vp-doc ul.task-list-container {
+  list-style: none;
+  padding-left: 0.25rem;
+}
+
+.vp-doc li.task-list-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  list-style: none;
+}
+
+.vp-doc input.task-list-item-checkbox {
+  appearance: auto;
+  accent-color: var(--accent);
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0;
+  transform: translateY(0.12em);
+  flex-shrink: 0;
+}
+
 /* Outline Callout Containers (:::warning, :::tip, :::info, :::danger) */
 .vp-doc .custom-block {
   border-left: 4px solid;

@@ -173,6 +173,18 @@ importers:
         specifier: ^3.0.2
         version: 3.0.2
     devDependencies:
+      '@mdit/plugin-figure':
+        specifier: ^1.2.2
+        version: 1.2.2
+      '@mdit/plugin-img-size':
+        specifier: ^1.1.2
+        version: 1.1.2
+      '@mdit/plugin-mark':
+        specifier: ^2.1.2
+        version: 2.1.2
+      '@mdit/plugin-tasklist':
+        specifier: ^1.1.3
+        version: 1.1.3
       '@tailwindcss/typography':
         specifier: ^0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
@@ -502,6 +514,60 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@mdit/helper@1.1.2':
+    resolution: {integrity: sha512-xZywQ7aXrmkRCuGvFXguXVKeiQ7kHCxPkjtR+nK/n31YiSPPi/Rmb/ll+CYt0LdyeXR0Y1I16da7gxDT4/VXWg==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      markdown-it: ^15.0.2
+    peerDependenciesMeta:
+      markdown-it:
+        optional: true
+
+  '@mdit/plugin-figure@1.2.2':
+    resolution: {integrity: sha512-xDMFMdiftj3fElLCx6pqLLwW5J32hU5omPWwlv9T+6myc+XqVBIB3ASewarqVqkK75eNqVKy6KFC66tnYGveWQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      markdown-it: ^15.0.2
+    peerDependenciesMeta:
+      markdown-it:
+        optional: true
+
+  '@mdit/plugin-img-size@1.1.2':
+    resolution: {integrity: sha512-OiKmDir4QJetwO468uR0msAPNbfe9CS5ibF1AL4TlLZxLFHqBjQXueu+8hH321G12b8oxxnaD8lVql3TzMPlGA==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      markdown-it: ^15.0.2
+    peerDependenciesMeta:
+      markdown-it:
+        optional: true
+
+  '@mdit/plugin-inline-rule@2.2.2':
+    resolution: {integrity: sha512-FQFiXeWjZCgolJ/3OPZfL7ycsWtEQIUoEXzin+j+rDgeer7lMp3ixBhYF7ye50zkKDIZi+wR/VMJ8dXlUQaXSQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      markdown-it: ^15.0.2
+    peerDependenciesMeta:
+      markdown-it:
+        optional: true
+
+  '@mdit/plugin-mark@2.1.2':
+    resolution: {integrity: sha512-X547HlZcbP29k+tG/cRy0+IHtxGdAlaEoXDqj3pE0D1QYF5+p+KRzle43V1zvaYourD03ci5MmEtQIIZBB7vdA==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      markdown-it: ^15.0.2
+    peerDependenciesMeta:
+      markdown-it:
+        optional: true
+
+  '@mdit/plugin-tasklist@1.1.3':
+    resolution: {integrity: sha512-iZYJxlxXrE1WxhtckHolVtepVuic+6H5l7uJvigXug4rG52F5qbvAOmZk0nWhRSo/V5q0nmgVCczFtTFfNC4ew==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      markdown-it: ^15.0.2
+    peerDependenciesMeta:
+      markdown-it:
+        optional: true
 
   '@mermaid-js/parser@2.0.0':
     resolution: {integrity: sha512-K8BeapFUfrfxbRAUQAG5oBOCwo1+bNWzaVnPxTCutkfrTBn6T/j91FIhqxWJ32SUeQ9T3iy1zcmPZ5ROZEvDrg==}
@@ -1996,6 +2062,29 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
+
+  '@mdit/helper@1.1.2': {}
+
+  '@mdit/plugin-figure@1.2.2':
+    dependencies:
+      '@mdit/helper': 1.1.2
+
+  '@mdit/plugin-img-size@1.1.2':
+    dependencies:
+      '@mdit/helper': 1.1.2
+
+  '@mdit/plugin-inline-rule@2.2.2':
+    dependencies:
+      '@mdit/helper': 1.1.2
+
+  '@mdit/plugin-mark@2.1.2':
+    dependencies:
+      '@mdit/helper': 1.1.2
+      '@mdit/plugin-inline-rule': 2.2.2
+
+  '@mdit/plugin-tasklist@1.1.3':
+    dependencies:
+      '@mdit/helper': 1.1.2
 
   '@mermaid-js/parser@2.0.0':
     dependencies:
