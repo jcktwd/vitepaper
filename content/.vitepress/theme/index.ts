@@ -26,6 +26,49 @@ export default {
       let prevSnakeRight: number | null = null
       let snakeTimer: ReturnType<typeof setTimeout> | null = null
 
+      let wavePhase = 0
+      let waveVelocity = 0
+      let isHoveringNav = false
+      let waveRafId: number | null = null
+      let lastFrameTime = 0
+
+      const WAVE_MAX_SPEED = 10 // px/s cruising speed
+      const WAVE_ACCEL_TAU = 0.28 // seconds time-constant to accelerate into motion
+      const WAVE_DECEL_TAU = 0.38 // seconds time-constant to coast to a stop
+      const WAVE_PERIOD = 11 // 11px SVG tile width
+
+      const stepWave = (now: number) => {
+        const dt = Math.min(0.05, Math.max(0, (now - lastFrameTime) / 1000))
+        lastFrameTime = now
+
+        const snake = document.querySelector<HTMLElement>('.VPNavBarMenu .vp-nav-snake')
+        const wantActive = isHoveringNav || snakeTimer !== null
+        const targetSpeed = wantActive ? WAVE_MAX_SPEED : 0
+        const tau = wantActive ? WAVE_ACCEL_TAU : WAVE_DECEL_TAU
+
+        waveVelocity += (targetSpeed - waveVelocity) * (1 - Math.exp(-dt / tau))
+
+        if (!wantActive && waveVelocity < 0.12) {
+          waveVelocity = 0
+          waveRafId = null
+          return
+        }
+
+        wavePhase = (wavePhase - waveVelocity * dt) % WAVE_PERIOD
+        if (snake) {
+          snake.style.setProperty('--wave-phase', `${wavePhase.toFixed(2)}px`)
+        }
+
+        waveRafId = requestAnimationFrame(stepWave)
+      }
+
+      const ensureWaveLoop = () => {
+        if (waveRafId === null) {
+          lastFrameTime = performance.now()
+          waveRafId = requestAnimationFrame(stepWave)
+        }
+      }
+
       const updateNavSnake = (explicitTarget?: HTMLElement | null, animate = true) => {
         const menu = document.querySelector<HTMLElement>('.VPNavBarMenu')
         if (!menu) return
@@ -77,6 +120,7 @@ export default {
           snake.classList.toggle('is-moving-right', movingRight)
           snake.classList.toggle('is-moving-left', !movingRight)
           snake.classList.add('is-snaking')
+          ensureWaveLoop()
           if (snakeTimer) clearTimeout(snakeTimer)
           snakeTimer = setTimeout(() => {
             snake?.classList.remove('is-snaking')
@@ -92,6 +136,30 @@ export default {
         prevSnakeLeft = nextLeft
         prevSnakeRight = nextRight
       }
+
+      // Smoothly accelerate wave on hover, decelerate on leave
+      document.addEventListener(
+        'pointerover',
+        (e) => {
+          const target = e.target as HTMLElement | null
+          if (target?.closest('.VPNavBarMenu .VPNavBarMenuLink')) {
+            isHoveringNav = true
+            ensureWaveLoop()
+          }
+        },
+        { passive: true }
+      )
+
+      document.addEventListener(
+        'pointerout',
+        (e) => {
+          const related = e.relatedTarget as HTMLElement | null
+          if (!related?.closest?.('.VPNavBarMenu .VPNavBarMenuLink')) {
+            isHoveringNav = false
+          }
+        },
+        { passive: true }
+      )
 
       // Immediately start snaking as soon as a navbar link is clicked
       document.addEventListener('click', (e) => {

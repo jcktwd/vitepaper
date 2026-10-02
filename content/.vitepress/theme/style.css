@@ -127,23 +127,12 @@ html {
   letter-spacing: -0.02em;
 }
 
-/* AstroPaper dynamic wiggling & snaking wavy underline on navbar links (v3)
+/* AstroPaper dynamic wiggling & snaking wavy underline on navbar links
    - Single wave line under the currently selected item (~4 waves under "Posts", tall amplitude)
-   - Slowly oscillates whenever ANY navbar item is hovered
-   - Both edges start moving simultaneously on click via ease-out @property vars on clip-path */
+   - Smoothly accelerates into oscillation on hover and coasts to a stop on mouseleave via --wave-phase
+   - Both edges start and arrive simultaneously on click via distance-scaled @property vars on clip-path */
 :root {
   --vp-wave-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 7' width='11' height='7'%3E%3Cpath d='M 0 3.5 Q 2.75 -1.5 5.5 3.5 T 11 3.5' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
-}
-
-@keyframes vp-wave-crawl {
-  from {
-    -webkit-mask-position: 0px 0px;
-    mask-position: 0px 0px;
-  }
-  to {
-    -webkit-mask-position: -22px 0px;
-    mask-position: -22px 0px;
-  }
 }
 
 .VPNavBarMenu {
@@ -182,12 +171,12 @@ html {
   mask-repeat: repeat-x;
   -webkit-mask-size: 11px 7px;
   mask-size: 11px 7px;
+  -webkit-mask-position: var(--wave-phase, 0px) 0px;
+  mask-position: var(--wave-phase, 0px) 0px;
   clip-path: inset(0 var(--snake-right, 100%) 0 var(--snake-left, 0px));
   opacity: 0;
   pointer-events: none;
   z-index: 2;
-  animation: vp-wave-crawl 2.4s linear infinite;
-  animation-play-state: paused;
 }
 
 .vp-nav-snake.is-visible {
@@ -195,7 +184,7 @@ html {
 }
 
 /* Use independent CSS @property vars so both leading & trailing edges start moving immediately
-   at t=0 with ease-out curves, with the leading edge arriving just slightly ahead */
+   at t=0 and arrive at the exact same millisecond */
 @property --snake-left {
   syntax: "<length-percentage>";
   inherits: false;
@@ -220,12 +209,6 @@ html {
     --snake-left var(--snake-duration, 600ms) cubic-bezier(0.25, 0.55, 0.35, 1),
     --snake-right var(--snake-duration, 600ms) cubic-bezier(0.45, 0.15, 0.6, 1),
     opacity 200ms ease;
-}
-
-/* Hovering ANY navbar link OR snaking between items keeps the wave oscillating continuously */
-.VPNavBarMenu:has(.VPNavBarMenuLink:hover) .vp-nav-snake,
-.vp-nav-snake.is-snaking {
-  animation-play-state: running;
 }
 
 /* Always show theme toggle & social icons directly in navbar on desktop (>= 768px) instead of hiding behind '...' ellipsis */
