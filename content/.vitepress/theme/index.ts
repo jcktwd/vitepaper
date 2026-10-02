@@ -200,9 +200,7 @@ export default {
       window.addEventListener(
         'popstate',
         (e: PopStateEvent & { hasUAVisualTransition?: boolean }) => {
-          const isMobileViewport =
-            window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768
-          if (e.hasUAVisualTransition || isMobileViewport) {
+          if (e.hasUAVisualTransition) {
             skipNextViewTransition = true
             setTimeout(() => {
               skipNextViewTransition = false
