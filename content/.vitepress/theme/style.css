@@ -397,6 +397,13 @@ html {
   mask-size: 100% 100%;
 }
 
+/* An inline icon plus the no-break space after it (lib/markdown/inline-tokens.ts): browsers allow a
+   line break right after an inline-block even before a no-break space, so nowrap keeps the icon on
+   the same line as the word that follows it */
+.vp-icon-glue {
+  white-space: nowrap;
+}
+
 .vp-inline-icon {
   width: 1.1em;
   height: 1.1em;
