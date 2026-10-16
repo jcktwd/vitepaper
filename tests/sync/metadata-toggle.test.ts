@@ -16,6 +16,8 @@ describe('metadata inside an Outline toggle block', () => {
   it.each([
     ['paragraph head', '+++\nMetadata\n\n```yaml\ntags: [linux]\nfeatured: true\n```\n+++\n\nBody text.'],
     ['heading head', '+++\n### Frontmatter\n```yml\ntags: [linux]\nfeatured: true\n```\n+++\nBody text.'],
+    // Exactly how Outline exports a top-level toggle: five pluses and blank lines around the code
+    ['Outline export', '+++++\nMetadata\n\n```yaml\ntags: [linux]\nfeatured: true\n```\n\n+++++\nBody text.'],
   ])('reads YAML from a toggle with a %s and strips the toggle', (_label, md) => {
     const post = parseDocumentFrontmatter(md, doc, [])
     expect(post.frontmatter.tags).toEqual(['linux'])

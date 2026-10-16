@@ -97,9 +97,10 @@ export function parseDocumentFrontmatter(
   let userMeta: Record<string, any> = {}
 
   // 1. Extract optional top-of-doc ```yaml or ```frontmatter code block, either bare or inside an
-  //    Outline toggle block headed "Metadata" / "Frontmatter" (so it stays collapsed while writing)
+  //    Outline toggle block headed "Metadata" / "Frontmatter" (so it stays collapsed while writing).
+  //    Outline exports that toggle as `+++++` with blank lines around the code block.
   const yamlBlockRe =
-    /^(?:```(?:yaml|yml|frontmatter)\n([\s\S]*?)\n```|\+{3,}\n(?:#{1,6}[ \t]+)?(?:metadata|frontmatter)[ \t]*\n+```(?:yaml|yml|frontmatter)\n([\s\S]*?)\n```[ \t]*\n\+{3,})\s*/i
+    /^(?:```(?:yaml|yml|frontmatter)\n([\s\S]*?)\n```|\+{3,}\n(?:#{1,6}[ \t]+)?(?:metadata|frontmatter)[ \t]*\n+```(?:yaml|yml|frontmatter)\n([\s\S]*?)\n```[ \t]*\n+\+{3,})\s*/i
   const yamlMatch = body.match(yamlBlockRe)
   if (yamlMatch) {
     try {
