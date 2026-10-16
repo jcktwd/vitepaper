@@ -13,7 +13,7 @@ import {
 import siteConfig from '../../vitepaper.config.ts'
 import { resolveSiteLogo } from './lib/logo.ts'
 import { configureMarkdown } from './lib/markdown/index.ts'
-import { buildPostsActiveMatch, getOutlineNavItems } from './lib/nav.ts'
+import { buildPostsActiveMatch, getDraftSlugs, getOutlineNavItems } from './lib/nav.ts'
 import { generateOgImages } from './lib/og-images.ts'
 import { POSTS_DIR, PUBLIC_DIR } from './lib/paths.ts'
 import { buildRssXml } from './lib/rss.ts'
@@ -41,8 +41,13 @@ export default defineConfigWithTheme<VitePaperThemeConfig>({
 
   sitemap: {
     hostname: siteConfig.site.url,
+    // Drafts are built for `/drafts` previews (and marked noindex) but never advertised
     transformItems(items) {
-      return items.filter((item) => !item.url.includes('drafts'))
+      const draftSlugs = getDraftSlugs(POSTS_DIR)
+      return items.filter((item) => {
+        const url = item.url.replace(/^\/+/, '').replace(/\.html$/, '')
+        return url !== 'drafts' && !(url.startsWith('posts/') && draftSlugs.has(url.slice('posts/'.length)))
+      })
     },
   },
 

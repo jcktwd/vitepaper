@@ -113,7 +113,8 @@ const localConfigPath = path.join(__dirname, 'vitepaper.local.ts')
 
 let mergedConfig: VitePaperConfig = defaultConfig
 
-if (existsSync(localConfigPath)) {
+// `VITEPAPER_IGNORE_LOCAL=1` builds with the defaults only (used by the fixture-site tests)
+if (!process.env.VITEPAPER_IGNORE_LOCAL && existsSync(localConfigPath)) {
   const localMod = (await import(pathToFileURL(localConfigPath).href)) as {
     default?: DeepPartial<VitePaperConfig>
   }

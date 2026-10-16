@@ -1,5 +1,6 @@
 import YAML from 'yaml'
 import type { OutlineDocument } from './outline-api.ts'
+import { escapeOutlineText } from './escape.ts'
 import { slugify } from './slugify.ts'
 
 /** Outline's named icons mapped to the closest emoji; any other ASCII name is dropped. */
@@ -199,7 +200,7 @@ export function isListed(post: SyncedPost): boolean {
   return !post.frontmatter.excludeFromPosts && !post.frontmatter.draft
 }
 
-/** Serializes a post into the Markdown file written to `content/posts/<slug>.md`. */
+/** Serializes a post into the Markdown file written to `content/posts/<slug>.md`, escaping text VitePress would otherwise treat as HTML or Vue. */
 export function serializePost(post: SyncedPost): string {
-  return `---\n${YAML.stringify(post.frontmatter).trim()}\n---\n\n${post.body}\n`
+  return `---\n${YAML.stringify(post.frontmatter).trim()}\n---\n\n${escapeOutlineText(post.body)}\n`
 }

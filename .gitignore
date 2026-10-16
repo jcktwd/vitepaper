@@ -24,3 +24,6 @@ content/public/favicon.svg
 .DS_Store
 Thumbs.db
 *.log
+
+# Built-site test fixture (pnpm test:site)
+fixture-content/

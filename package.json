@@ -16,6 +16,7 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:site": "node scripts/build-fixture-site.ts && vitest run --config vitest.site.config.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm test"
   },
   "keywords": [],
@@ -54,6 +55,7 @@
     "markdown-it-footnote": "^4.0.0",
     "markdown-it-mathjax3": "^5.2.0",
     "mermaid": "^12.0.0",
+    "node-html-parser": "^9.0.4",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.2",

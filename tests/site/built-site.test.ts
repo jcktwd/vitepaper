@@ -1,0 +1,111 @@
+/**
+ * Checks the HTML of the fixture site built by `scripts/build-fixture-site.ts` from
+ * `tests/fixtures/outline-docs.ts`. Run with `pnpm test:site` (builds first).
+ */
+import { existsSync, readFileSync } from 'node:fs'
+import path from 'node:path'
+import { parse, type HTMLElement } from 'node-html-parser'
+import { describe, expect, it } from 'vitest'
+
+const DIST = path.resolve('fixture-content/.vitepress/dist')
+
+if (!existsSync(DIST)) {
+  throw new Error('No fixture site found: run `pnpm test:site` (it builds fixture-content/ first)')
+}
+
+const read = (file: string) => readFileSync(path.join(DIST, file), 'utf8')
+const page = (file: string): HTMLElement => parse(read(file))
+
+/** Card links rendered by <PostList /> on a page, in order, as slugs */
+const cardSlugs = (root: HTMLElement) =>
+  root.querySelectorAll('a.vp-post-card-link').map((a) => a.getAttribute('href')!.replace(/^\/posts\//, ''))
+
+const PUBLISHED = ['featured-teardown', 'linux-notes', 'older-post']
+
+describe('post cards', () => {
+  it('home shows the featured post, then recent posts, and nothing unlisted', () => {
+    const home = page('index.html')
+    const sections = home.querySelectorAll('section')
+    const featured = sections.find((s) => s.querySelector('h2')?.text.trim() === 'Featured')!
+    const recent = sections.find((s) => s.querySelector('h2')?.text.trim() === 'Recent Posts')!
+
+    expect(cardSlugs(featured)).toEqual(['featured-teardown'])
+    expect(cardSlugs(recent)).toEqual(['linux-notes', 'older-post'])
+  })
+
+  it('the posts page lists every published post, newest first, without the newer draft', () => {
+    expect(cardSlugs(page('posts.html'))).toEqual(PUBLISHED)
+  })
+
+  it('the tags page counts only published posts', () => {
+    const tags = page('tags.html')
+      .querySelectorAll('.not-prose button')
+      .map((b) => b.text.replace(/\s+/g, ' ').trim())
+    expect(tags).toEqual(['#hardware (2)', '#linux (2)'])
+    expect(cardSlugs(page('tags.html'))).toEqual(PUBLISHED)
+  })
+
+  it('cards show the title, description, reading time and tag links', () => {
+    const card = page('posts.html').querySelector('a.vp-post-card-link[href="/posts/featured-teardown"]')!.parentNode!
+    expect(card.querySelector('.vp-post-card-title')!.text.trim()).toBe('Featured Teardown')
+    expect(card.querySelector('p')!.text.trim()).toBe('A teardown of a Vec<String> parser that prints {{ 1 + 1 }} literally.')
+    expect(card.text).toContain('1 min read')
+    expect(card.querySelectorAll('a[href^="/tags?tag="]').map((a) => a.text.trim())).toEqual(['#hardware'])
+  })
+
+  it('every card links to a page that exists', () => {
+    for (const file of ['index.html', 'posts.html', 'tags.html', 'drafts.html']) {
+      for (const slug of cardSlugs(page(file))) {
+        expect(existsSync(path.join(DIST, 'posts', `${slug}.html`)), `${file} -> ${slug}`).toBe(true)
+      }
+    }
+  })
+
+  it('the drafts preview lists the draft', () => {
+    expect(cardSlugs(page('drafts.html'))).toEqual(['secret-draft'])
+  })
+})
+
+describe('unlisted pages', () => {
+  it('drafts are built but noindex, and kept out of the sitemap and RSS', () => {
+    expect(page('posts/secret-draft.html').querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('noindex, nofollow')
+    expect(read('sitemap.xml')).not.toContain('secret-draft')
+    expect(read('rss.xml')).not.toContain('secret-draft')
+  })
+
+  it('the RSS feed has exactly the published posts, newest first', () => {
+    const links = [...read('rss.xml').matchAll(/<item>[\s\S]*?<link>[^<]*\/posts\/([^<]+)<\/link>/g)].map((m) => m[1])
+    expect(links).toEqual(PUBLISHED)
+  })
+
+  it('a page pinned with `nav:` is in the navbar but not the post lists', () => {
+    const navLinks = page('index.html').querySelectorAll('.VPNavBarMenuLink').map((a) => a.text.trim())
+    expect(navLinks).toContain('About')
+    expect(cardSlugs(page('posts.html'))).not.toContain('about-me')
+  })
+})
+
+describe('post pages', () => {
+  const featured = () => page('posts/featured-teardown.html')
+
+  it('render Outline text literally instead of as HTML or Vue', () => {
+    const text = featured().querySelector('.vp-doc')!.text
+    expect(text).toContain('A teardown of a Vec<String> parser that prints {{ 1 + 1 }} literally.')
+  })
+
+  it('keep the HTML Outline emits itself: table line breaks and autolinks', () => {
+    const doc = featured().querySelector('.vp-doc')!
+    expect(doc.querySelector('td br')).not.toBeNull()
+    expect(doc.querySelector('a[href="https://example.com/autolink"]')).not.toBeNull()
+  })
+
+  it('rewrite cross-document links and show backlinks on the target', () => {
+    expect(featured().querySelector('.vp-doc a[href="/posts/linux-notes"]')).not.toBeNull()
+    const backlinks = page('posts/linux-notes.html').querySelectorAll('a.vp-backlink-item').map((a) => a.getAttribute('href'))
+    expect(backlinks).toEqual(['/posts/featured-teardown'])
+  })
+
+  it('render footnotes', () => {
+    expect(featured().querySelector('section.footnotes li#fn1')?.text).toContain('With a logic analyser.')
+  })
+})

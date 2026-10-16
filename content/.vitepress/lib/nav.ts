@@ -8,13 +8,10 @@ export interface NavItem {
   activeMatch: string
 }
 
-/**
- * Dynamically discovers synced Outline articles that have `nav: <label>` in frontmatter
- * so any Outline article can appear on the top navigation bar automatically.
- */
-export function getOutlineNavItems(postsDir: string): NavItem[] {
+/** Slug and parsed frontmatter of every synced post (posts with missing or invalid frontmatter are skipped) */
+export function readPostsFrontmatter(postsDir: string): Array<{ slug: string; fm: Record<string, any> }> {
   if (!existsSync(postsDir)) return []
-  const items: Array<NavItem & { order: number }> = []
+  const posts: Array<{ slug: string; fm: Record<string, any> }> = []
 
   for (const file of readdirSync(postsDir)) {
     if (!file.endsWith('.md')) continue
@@ -23,20 +20,32 @@ export function getOutlineNavItems(postsDir: string): NavItem[] {
     if (!fmMatch) continue
     try {
       const fm = YAML.parse(fmMatch[1])
-      if (fm && fm.nav && !fm.draft) {
-        const slug = file.replace(/\.md$/, '')
-        const label = typeof fm.nav === 'string' ? fm.nav : fm.title || slug
-        items.push({
-          text: label,
-          link: `/posts/${slug}`,
-          activeMatch: `^/posts/${slug}`,
-          order: Number(fm.navOrder ?? 50),
-        })
-      }
+      if (fm && typeof fm === 'object') posts.push({ slug: file.replace(/\.md$/, ''), fm })
     } catch {
       // Ignore invalid frontmatter
     }
   }
+  return posts
+}
+
+/** Slugs of draft posts: built for `/drafts` previews, but kept out of the sitemap */
+export function getDraftSlugs(postsDir: string): Set<string> {
+  return new Set(readPostsFrontmatter(postsDir).filter(({ fm }) => fm.draft).map(({ slug }) => slug))
+}
+
+/**
+ * Dynamically discovers synced Outline articles that have `nav: <label>` in frontmatter
+ * so any Outline article can appear on the top navigation bar automatically.
+ */
+export function getOutlineNavItems(postsDir: string): NavItem[] {
+  const items: Array<NavItem & { order: number }> = readPostsFrontmatter(postsDir)
+    .filter(({ fm }) => fm.nav && !fm.draft)
+    .map(({ slug, fm }) => ({
+      text: typeof fm.nav === 'string' ? fm.nav : fm.title || slug,
+      link: `/posts/${slug}`,
+      activeMatch: `^/posts/${slug}`,
+      order: Number(fm.navOrder ?? 50),
+    }))
 
   return items
     .sort((a, b) => a.order - b.order || a.text.localeCompare(b.text))

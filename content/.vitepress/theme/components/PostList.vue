@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useData } from 'vitepress'
-import { data as allLoadedPosts, type PostItem } from '../posts.data.ts'
+import { data as allLoadedPosts } from '../posts.data.ts'
+import {
+  draftPosts as selectDrafts,
+  homePosts,
+  postsWithTag,
+  publishedPosts as selectPublished,
+  tagCounts,
+} from '../post-cards.ts'
 
 const props = withDefaults(
   defineProps<{
@@ -16,10 +23,8 @@ const props = withDefaults(
 
 const { site, theme } = useData()
 
-const publishedPosts = computed(() =>
-  allLoadedPosts.filter((p) => !p.excludeFromPosts && !p.draft)
-)
-const draftPosts = computed(() => allLoadedPosts.filter((p) => p.draft))
+const publishedPosts = computed(() => selectPublished(allLoadedPosts))
+const draftPosts = computed(() => selectDrafts(allLoadedPosts))
 
 const pageLimit = computed(() => theme.value.postsPerPage || props.limit)
 const selectedTag = ref<string>('')
@@ -42,29 +47,12 @@ function selectTag(tag: string) {
   window.history.replaceState({}, '', url.toString())
 }
 
-const featuredPosts = computed(() => publishedPosts.value.filter((p) => p.featured))
-const recentPosts = computed(() => {
-  const nonFeatured = publishedPosts.value.filter((p) => !p.featured)
-  const list = featuredPosts.value.length > 0 ? nonFeatured : publishedPosts.value
-  return list.slice(0, pageLimit.value)
-})
+const home = computed(() => homePosts(allLoadedPosts, pageLimit.value))
+const featuredPosts = computed(() => home.value.featured)
+const recentPosts = computed(() => home.value.recent)
 
-const allTags = computed(() => {
-  const counts = new Map<string, number>()
-  for (const post of publishedPosts.value) {
-    for (const tag of post.tags) {
-      counts.set(tag, (counts.get(tag) || 0) + 1)
-    }
-  }
-  return [...counts.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-})
-
-const filteredByTag = computed<PostItem[]>(() => {
-  if (!selectedTag.value) return publishedPosts.value
-  return publishedPosts.value.filter((p) => p.tags.includes(selectedTag.value))
-})
+const allTags = computed(() => tagCounts(allLoadedPosts))
+const filteredByTag = computed(() => postsWithTag(allLoadedPosts, selectedTag.value))
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', {

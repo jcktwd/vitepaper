@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveSiteLogo } from '../../content/.vitepress/lib/logo.ts'
-import { buildPostsActiveMatch, getOutlineNavItems } from '../../content/.vitepress/lib/nav.ts'
+import { buildPostsActiveMatch, getDraftSlugs, getOutlineNavItems } from '../../content/.vitepress/lib/nav.ts'
 import { buildRssXml } from '../../content/.vitepress/lib/rss.ts'
 import { addPublicAliases } from '../../content/.vitepress/lib/thumbhash.ts'
 import { escapeXml } from '../../content/.vitepress/lib/xml.ts'
@@ -65,6 +65,16 @@ describe('getOutlineNavItems', () => {
 
   it('returns nothing when the posts directory does not exist', () => {
     expect(getOutlineNavItems(path.join(tmpdir(), 'vitepaper-missing-dir'))).toEqual([])
+  })
+
+  it('getDraftSlugs finds drafts and skips posts without valid frontmatter', () => {
+    dir = mkdtempSync(path.join(tmpdir(), 'vitepaper-drafts-'))
+    writeFileSync(path.join(dir, 'secret.md'), '---\ntitle: Secret\ndraft: true\n---\nx')
+    writeFileSync(path.join(dir, 'public.md'), '---\ntitle: Public\n---\nx')
+    writeFileSync(path.join(dir, 'broken.md'), '---\n: : bad yaml [\n---\nx')
+    writeFileSync(path.join(dir, 'none.md'), 'no frontmatter')
+
+    expect([...getDraftSlugs(dir)]).toEqual(['secret'])
   })
 })
 

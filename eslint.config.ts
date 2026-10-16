@@ -12,6 +12,7 @@ export default defineConfig(
       'content/.vitepress/dist/',
       'content/.vitepress/dist-next/',
       'content/.vitepress/dist-old/',
+      'fixture-content/',
     ],
   },
   js.configs.recommended,

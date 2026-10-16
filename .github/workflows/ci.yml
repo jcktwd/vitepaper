@@ -47,3 +47,8 @@ jobs:
       # No Outline credentials in CI: builds the empty starter site to catch config/theme breakage
       - name: Build
         run: pnpm docs:build
+
+      # Builds a site from fixture Outline documents (through the real sync code) and checks its HTML:
+      # post cards, drafts and unlisted pages, RSS/sitemap, escaping, links and backlinks
+      - name: Built-site checks
+        run: pnpm test:site
