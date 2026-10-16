@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import sirv from 'sirv'
+import { cacheControlFor } from './server/cache-control.ts'
 import { verifyOutlineSignature } from './server/signature.ts'
 import { syncOutline } from './sync.ts'
 
@@ -36,11 +37,8 @@ function createStaticHandler() {
     etag: true,
     extensions: ['html'],
     setHeaders(res, pathname) {
-      if (pathname.startsWith('/assets/')) {
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
-      } else if (pathname.endsWith('.html')) {
-        res.setHeader('Cache-Control', 'no-cache')
-      }
+      const cacheControl = cacheControlFor(pathname)
+      if (cacheControl) res.setHeader('Cache-Control', cacheControl)
     },
     onNoMatch(_req, res) {
       const notFoundPath = path.join(DIST_DIR, '404.html')
