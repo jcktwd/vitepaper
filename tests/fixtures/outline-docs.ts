@@ -55,7 +55,12 @@ export const fixtureDocs: FixtureDoc[] = [
   },
   {
     inheritedTags: ['linux'],
-    doc: doc(2, 'Linux Notes', '2026-04-01T09:00:00.000Z', [`${F}yaml`, 'tags: [hardware]', F, '', 'Notes about Linux.'].join('\n')),
+    doc: doc(
+      2,
+      'Linux Notes',
+      '2026-04-01T09:00:00.000Z',
+      [`${F}yaml`, 'tags: [hardware]', F, '', 'Notes about Linux, with maths: $a^2 + b^2 = c^2$.', '', '$$', '\\int_0^1 x\\,dx = \\frac{1}{2}', '$$'].join('\n')
+    ),
   },
   {
     inheritedTags: ['linux'],

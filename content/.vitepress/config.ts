@@ -14,9 +14,10 @@ import siteConfig from '../../vitepaper.config.ts'
 import { GOOGLE_FONTS_CSS_URL, loadGoogleFontBuffers } from './lib/fonts.ts'
 import { resolveSiteLogo } from './lib/logo.ts'
 import { configureMarkdown } from './lib/markdown/index.ts'
+import { isMathjaxElement, mathjaxStylesheet } from './lib/markdown/math.ts'
 import { buildPostsActiveMatch, getDraftSlugs, getOutlineNavItems } from './lib/nav.ts'
 import { generateOgImages } from './lib/og-images.ts'
-import { POSTS_DIR, PUBLIC_DIR } from './lib/paths.ts'
+import { CONTENT_DIR, POSTS_DIR, PUBLIC_DIR } from './lib/paths.ts'
 import { buildRssXml } from './lib/rss.ts'
 import { renderSearchEntry } from './lib/search.ts'
 import { buildSocialMeta, mergeHead } from './lib/social-meta.ts'
@@ -32,6 +33,8 @@ export interface VitePaperThemeConfig extends DefaultTheme.Config {
 type VitePlugins = NonNullable<NonNullable<UserConfig['vite']>['plugins']>
 
 const baseUrl = siteConfig.site.url.replace(/\/+$/, '')
+// MathJax's SVG output CSS is the same for every formula, so it's collected once (lib/markdown/math.ts)
+const mathjaxCss = await mathjaxStylesheet(CONTENT_DIR)
 const { navLogo, faviconHref } = resolveSiteLogo(siteConfig.site.logo)
 const outlineNavItems = getOutlineNavItems(POSTS_DIR)
 
@@ -73,7 +76,12 @@ export default defineConfigWithTheme<VitePaperThemeConfig>({
         href: `${baseUrl}/rss.xml`,
       },
     ],
+    ['style', { id: 'mathjax-styles' }, mathjaxCss],
   ],
+
+  vue: {
+    template: { compilerOptions: { isCustomElement: isMathjaxElement } },
+  },
 
   async transformHead(context) {
     const head = await transformHeadMeta({
@@ -85,8 +93,11 @@ export default defineConfigWithTheme<VitePaperThemeConfig>({
         return excerpt || siteConfig.site.description
       },
     })([...context.head], context)
+    // VitePress appends what this returns to the page head, which already holds the site and
+    // frontmatter entries, so return only what the meta plugin added (not the whole head again)
+    const added = (head ?? []).filter((entry) => !context.head.includes(entry))
     return mergeHead(
-      head ?? [...context.head],
+      added,
       buildSocialMeta({
         relativePath: context.pageData.relativePath,
         frontmatter: context.pageData.frontmatter,
@@ -117,7 +128,6 @@ export default defineConfigWithTheme<VitePaperThemeConfig>({
   },
 
   markdown: {
-    math: true,
     theme: {
       light: 'github-light',
       dark: 'github-dark',

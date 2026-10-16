@@ -131,6 +131,15 @@ describe('social cards (OpenGraph)', () => {
     expect(metas(page('posts/about-me.html'), 'article:published_time')).toEqual([])
   })
 
+  it('site-wide head tags appear once, not repeated by transformHead', () => {
+    for (const file of ['index.html', 'posts/featured-teardown.html']) {
+      const head = page(file).querySelector('head')!
+      expect(head.querySelectorAll('link[rel="alternate"]'), `${file} rss`).toHaveLength(1)
+      expect(head.querySelectorAll('link[rel="stylesheet"][href*="fonts.googleapis.com"]'), `${file} fonts`).toHaveLength(1)
+      expect(head.querySelectorAll('link[rel="preconnect"]'), `${file} preconnect`).toHaveLength(2)
+    }
+  })
+
   it('every page has exactly one of each identity tag', () => {
     for (const file of ['index.html', 'posts.html', 'tags.html', ...PUBLISHED.map((s) => `posts/${s}.html`)]) {
       const html = page(file)
@@ -138,6 +147,29 @@ describe('social cards (OpenGraph)', () => {
         expect(metas(html, key), `${file} ${key}`).toHaveLength(1)
       }
       expect(html.querySelectorAll('link[rel="canonical"]'), `${file} canonical`).toHaveLength(1)
+    }
+  })
+})
+
+describe('maths', () => {
+  it('renders inline and block formulas as SVG', () => {
+    const doc = page('posts/linux-notes.html').querySelector('.vp-doc')!
+    const formulas = doc.querySelectorAll('mjx-container')
+    expect(formulas.map((m) => m.getAttribute('display') === 'true' ? 'block' : 'inline')).toEqual(['inline', 'block'])
+    expect(formulas.every((m) => m.querySelector('svg') !== null)).toBe(true)
+  })
+
+  it('adds the MathJax stylesheet once to the head', () => {
+    for (const file of ['posts/linux-notes.html', 'index.html']) {
+      const styles = page(file).querySelectorAll('head style#mathjax-styles')
+      expect(styles, file).toHaveLength(1)
+      expect(styles[0].text, file).toContain('mjx-container')
+    }
+  })
+
+  it('leaves no <style> or <script> inside page content (Vue drops them from templates)', () => {
+    for (const file of PUBLISHED.map((s) => `posts/${s}.html`)) {
+      expect(page(file).querySelectorAll('.VPContent style, .VPContent script'), file).toHaveLength(0)
     }
   })
 })

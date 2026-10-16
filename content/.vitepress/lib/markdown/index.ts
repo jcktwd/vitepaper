@@ -12,6 +12,7 @@ import { patchImageRenderer } from './images.ts'
 import { inlineTokensPlugin } from './inline-tokens.ts'
 import { successContainerPlugin, transformToggleBlocks } from './outline-blocks.ts'
 import { normalizeOutlineMarkdown } from './outline-fixes.ts'
+import { mathPlugin } from './math.ts'
 import { videosPlugin } from './videos.ts'
 
 type AnyPlugin = Parameters<MarkdownIt['use']>[0]
@@ -45,6 +46,9 @@ export function configureMarkdown(md: MarkdownIt): void {
   // `[^1]` footnotes, and Outline video links (`[title WxH](file.mp4)`) as <video> players
   md.use(footnotesPlugin)
   md.use(videosPlugin)
+
+  // `$inline$` and `$$block$$` maths with MathJax 4 (see math.ts)
+  md.use(mathPlugin)
 
   // 2. Render ```mermaid fenced blocks via our native <Mermaid /> Vue component, and show a tabbed
   //    block's filename (from `[!tab …] [!filename …]`) beside its language in the corner label
