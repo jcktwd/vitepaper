@@ -109,10 +109,11 @@
 
 html {
   scroll-behavior: smooth;
+  /* Room for the navbar plus, on phones, the sticky "On this page" bar */
   scroll-padding-top: calc(var(--vp-nav-height, 64px) + 3.5rem);
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 960px) {
   html {
     scroll-padding-top: calc(var(--vp-nav-height, 64px) + 1.5rem);
   }
@@ -127,6 +128,54 @@ html {
 .VPNavBar {
   border-bottom: 1px solid var(--border) !important;
   background-color: var(--background) !important;
+}
+
+/* Reading mode: on posts, theme/reading-nav.ts sets `vp-nav-hidden` once you scroll past the navbar,
+   and it slides away. Hovering the top of the window (or focusing into the navbar) brings it back;
+   that part is pure CSS below. Only where VitePress fixes the navbar to the top; narrower screens
+   already scroll it away with the page. */
+@media (min-width: 960px) {
+  html.vp-nav-hidden .VPNav {
+    transform: translateY(-100%);
+    /* VitePress makes the bar itself click-through (only its links take the pointer); while hidden,
+       the whole bar must count as hovered, or the empty space between links would hide it */
+    pointer-events: auto;
+  }
+
+  /* A strip hanging below the hidden navbar, half its height. While hidden it sits along the top of
+     the window (the reveal zone); once revealed it hangs below the navbar, so moving around the
+     links doesn't lose the hover. It's part of the navbar, so hovering it is hovering the navbar. */
+  html.vp-nav-hidden .VPNav::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: calc(var(--vp-nav-height) / 2);
+  }
+
+  html.vp-nav-hidden .VPNav:is(:hover, :focus-within) {
+    transform: none;
+  }
+}
+
+/* Motion: slide in decelerating; slide out accelerating after a short grace period, so the navbar
+   doesn't vanish the instant the pointer slips off it. `!important` beats VitePress's scoped
+   `.VPNav[data-v-…] { transition: background-color }`. */
+@media (min-width: 960px) and (prefers-reduced-motion: no-preference) {
+  :root {
+    --vp-nav-slide-in: 0.3s cubic-bezier(0.2, 0, 0, 1);
+    --vp-nav-slide-out: 0.2s cubic-bezier(0.4, 0, 1, 1) 0.25s;
+  }
+
+  .VPNav,
+  html.vp-nav-hidden .VPNav:is(:hover, :focus-within) {
+    transition: background-color 0.5s, transform var(--vp-nav-slide-in) !important;
+  }
+
+  html.vp-nav-hidden .VPNav {
+    transition: background-color 0.5s, transform var(--vp-nav-slide-out) !important;
+  }
 }
 
 .VPNavBarTitle .title {
@@ -236,7 +285,31 @@ html {
   fill: none !important;
 }
 
-/* Transform "On this page >" (< 1280px) from a floating popup into a slide-out sidebar drawer */
+/* From 960px the table of contents is the right sidebar (VitePress normally waits until 1280px and
+   uses the sticky "On this page" bar in between). That bar would sit under the navbar's reveal zone
+   whenever the navbar hides, so it's phones only. `!important` beats VitePress's scoped styles. */
+@media (min-width: 960px) {
+  .VPLocalNav {
+    display: none !important;
+  }
+
+  .VPDoc .container {
+    display: flex !important;
+    justify-content: center;
+  }
+
+  .VPDoc .aside {
+    display: block !important;
+  }
+
+  .VPDoc .content {
+    order: 1;
+    margin: 0 !important;
+    min-width: 0;
+  }
+}
+
+/* Phones: turn "On this page >" from a floating popup into a slide-out sidebar drawer */
 .VPLocalNav {
   background-color: var(--background) !important;
   border-bottom: 1px dashed var(--border) !important;
@@ -427,7 +500,7 @@ a:hover > .vp-post-card-title {
 }
 
 /* View Transitions API — AstroPaper-style morphing header + page cross-fade
-   Keep :root out of the snapshot so .VPNav's live snaking underline never freezes */
+   Keep :root out of the snapshot so the page around the named parts stays live */
 :root {
   view-transition-name: none;
 }
@@ -445,6 +518,42 @@ a:hover > .vp-post-card-title {
 ::view-transition-group(*) {
   animation-duration: 320ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Fixed chrome over the content (navbar, the phones' "On this page" bar, the reading progress bar).
+   During a transition the named snapshots are drawn in a layer above the whole page, so without
+   names of their own the content's snapshot would paint over them; e.g. at the bottom of a page,
+   where the content fills the area behind the navbar. Named and stacked above the content instead,
+   showing only their live new state: no cross-fade, and the navbar's snake keeps animating. */
+.VPNav {
+  view-transition-name: vp-nav;
+}
+
+.VPLocalNav {
+  view-transition-name: vp-local-nav;
+}
+
+.vp-reading-progress {
+  view-transition-name: vp-reading-progress;
+}
+
+::view-transition-group(vp-nav),
+::view-transition-group(vp-local-nav),
+::view-transition-group(vp-reading-progress) {
+  z-index: 1;
+  animation: none;
+}
+
+::view-transition-old(vp-nav),
+::view-transition-old(vp-local-nav),
+::view-transition-old(vp-reading-progress) {
+  display: none;
+}
+
+::view-transition-new(vp-nav),
+::view-transition-new(vp-local-nav),
+::view-transition-new(vp-reading-progress) {
+  animation: none;
 }
 
 /* AstroPaper Typography inside .vp-doc (excluding .not-prose components) */

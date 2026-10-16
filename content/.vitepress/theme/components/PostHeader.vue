@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed } from 'vue'
 import { useData } from 'vitepress'
 import { data as posts } from '../posts.data.ts'
 
@@ -34,35 +34,10 @@ function formatDate(iso?: string): string {
   })
 }
 
-const scrollProgress = ref(0)
-
-function updateScroll() {
-  const docEl = document.documentElement
-  const scrollTop = window.scrollY || docEl.scrollTop
-  const scrollHeight = docEl.scrollHeight - docEl.clientHeight
-  scrollProgress.value = scrollHeight > 0 ? Math.min(100, (scrollTop / scrollHeight) * 100) : 0
-}
-
-onMounted(() => {
-  window.addEventListener('scroll', updateScroll, { passive: true })
-  updateScroll()
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', updateScroll)
-})
 </script>
 
 <template>
   <div v-if="isSyncedDoc" id="post-summary" class="mb-8 border-b border-dashed border-border pb-6 scroll-mt-24">
-    <!-- AstroPaper Top Reading Progress Bar -->
-    <div class="fixed top-0 left-0 z-50 h-1 w-full bg-transparent">
-      <div
-        class="h-full bg-accent transition-[width] duration-75"
-        :style="{ width: `${scrollProgress}%` }"
-      />
-    </div>
-
     <!-- Unlisted Draft Preview Banner -->
     <div
       v-if="isDraft"

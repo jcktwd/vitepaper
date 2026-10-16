@@ -2,6 +2,7 @@
 title: Drafts
 sidebar: false
 outline: false
+aside: false
 prev: false
 next: false
 head:

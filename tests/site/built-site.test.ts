@@ -2,7 +2,7 @@
  * Checks the HTML of the fixture site built by `scripts/build-fixture-site.ts` from
  * `tests/fixtures/outline-docs.ts`. Run with `pnpm test:site` (builds first).
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { parse, type HTMLElement } from 'node-html-parser'
 import { describe, expect, it } from 'vitest'
@@ -139,6 +139,55 @@ describe('social cards (OpenGraph)', () => {
       }
       expect(html.querySelectorAll('link[rel="canonical"]'), `${file} canonical`).toHaveLength(1)
     }
+  })
+})
+
+describe('page transitions', () => {
+  const css = () => {
+    const file = readdirSync(path.join(DIST, 'assets')).find((f) => /^style\..+\.css$/.test(f))!
+    return read(path.join('assets', file)).replace(/\s+/g, '')
+  }
+
+  it('give the fixed chrome its own transition layers, stacked above the content', () => {
+    const styles = css()
+    for (const name of ['vp-nav', 'vp-local-nav', 'vp-reading-progress']) {
+      expect(styles, name).toContain(`view-transition-name:${name}`)
+      expect(styles, name).toMatch(new RegExp(`::view-transition-group\\(${name}\\)[^{]*\\{[^}]*z-index:1`))
+    }
+  })
+})
+
+describe('table of contents', () => {
+  it('posts have the right sidebar TOC with their headings', () => {
+    const aside = page('posts/featured-teardown.html').querySelector('.VPDoc .aside')
+    expect(aside).not.toBeNull()
+  })
+
+  it('listing pages have no (empty) TOC column pushing the list off-centre', () => {
+    for (const file of ['index.html', 'posts.html', 'tags.html', 'drafts.html']) {
+      expect(page(file).querySelector('.VPDoc .aside'), file).toBeNull()
+    }
+  })
+})
+
+describe('reading progress bar', () => {
+  const bars = (file: string) =>
+    page(file).querySelectorAll('div').filter((d) => d.classList.contains('fixed') && d.classList.contains('top-0') && d.classList.contains('z-50'))
+
+  it('is on posts, outside .VPContent so the navbar cannot paint over it', () => {
+    // .VPContent has a view-transition-name, making it a stacking context below the fixed navbar
+    const found = bars('posts/featured-teardown.html')
+    expect(found).toHaveLength(1)
+    expect(found[0].closest('.VPContent')).toBeNull()
+  })
+
+  it('lets the pointer through to the navbar reveal zone underneath it', () => {
+    expect(bars('posts/featured-teardown.html')[0].classList.contains('pointer-events-none')).toBe(true)
+  })
+
+  it('is not on listing pages', () => {
+    expect(bars('index.html')).toHaveLength(0)
+    expect(bars('posts.html')).toHaveLength(0)
   })
 })
 
