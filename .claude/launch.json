@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["docs:preview", "--port", "4173"],
+      "port": 4173
+    },
+    {
+      "name": "dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["docs:dev", "--port", "5173", "--strictPort"],
+      "port": 5173
+    }
+  ]
+}

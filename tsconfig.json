@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    // Scripts run directly via Node's type stripping, so only erasable TS syntax and explicit `.ts` imports work
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "jsx": "preserve"
+  },
+  "include": [
+    "content/.vitepress/**/*.ts",
+    "content/.vitepress/**/*.vue",
+    "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "vitepaper*.ts",
+    "*.config.ts"
+  ],
+  "exclude": ["node_modules", "content/.vitepress/cache", "content/.vitepress/dist"]
+}

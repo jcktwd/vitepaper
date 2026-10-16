@@ -99,6 +99,31 @@ pnpm sync:drafts
 pnpm docs:dev
 ```
 
+### 3. Checks
+
+```bash
+pnpm typecheck   # vue-tsc over the config, theme, scripts and tests
+pnpm lint        # ESLint (typescript-eslint + eslint-plugin-vue)
+pnpm test        # Vitest unit tests in tests/
+pnpm check       # all three, as run by CI (.github/workflows/ci.yml)
+```
+
+### Project Layout
+
+```text
+content/.vitepress/
+ ├── config.ts            # VitePress config: wires together the modules below
+ ├── lib/                 # Build-time helpers (nav, RSS, search, OG images, ThumbHash)
+ │    └── markdown/       # Outline Markdown fixes, tabbed code groups, images, inline icons
+ └── theme/               # Vue theme (AstroPaper port)
+scripts/
+ ├── sync.ts              # `pnpm sync` entry point
+ ├── sync/                # Outline API client, attachments, frontmatter, cross-links
+ ├── server.ts            # `pnpm serve`: static server + webhook rebuilds
+ └── server/              # Webhook signature verification
+tests/                    # Vitest suites mirroring the folders above
+```
+
 ---
 
 ## Self-Hosting with Docker Compose

@@ -57,6 +57,11 @@
   --vp-custom-block-danger-text: var(--foreground);
   --vp-custom-block-danger-bg: rgba(220, 38, 38, 0.1);
 
+  /* Outline's green :::success notice (no VitePress equivalent) */
+  --vp-custom-block-success-border: #16a34a;
+  --vp-custom-block-success-text: var(--foreground);
+  --vp-custom-block-success-bg: rgba(22, 163, 74, 0.09);
+
   --vp-code-block-bg: #efe3cf;
   --vp-code-color: var(--accent);
   --vp-code-bg: rgba(225, 74, 57, 0.1);
@@ -83,6 +88,9 @@
 
   --vp-custom-block-warning-border: #f59e0b;
   --vp-custom-block-warning-bg: rgba(245, 158, 11, 0.12);
+
+  --vp-custom-block-success-border: #4ade80;
+  --vp-custom-block-success-bg: rgba(74, 222, 128, 0.1);
 }
 
 @theme inline {
@@ -523,6 +531,68 @@ a:hover > .vp-post-card-title {
   text-align: center;
 }
 
+/* Outline videos (`[title WxH](file.mp4)`), at their Outline size but never wider than the column */
+.vp-doc figure.vp-video video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background: var(--background-soft);
+}
+
+/* markdown-it-footnote: `text[^1]` references and the notes list at the end of a post */
+.vp-doc .footnote-ref {
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+.vp-doc .footnote-ref a {
+  padding: 0 0.1em;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.vp-doc .footnote-ref a:hover {
+  text-decoration: underline;
+}
+
+.vp-doc hr.footnotes-sep {
+  margin: 3rem 0 1.25rem;
+}
+
+.vp-doc .footnotes {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+
+.vp-doc .footnotes-list {
+  padding-left: 1.5rem;
+}
+
+.vp-doc .footnotes-list li {
+  margin: 0.4rem 0;
+}
+
+.vp-doc .footnotes-list li > p {
+  margin: 0;
+  display: inline;
+}
+
+.vp-doc .footnote-backref {
+  margin-left: 0.35em;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* Land footnote jumps clear of the fixed navbar */
+.vp-doc .footnote-item,
+.vp-doc .footnote-ref a {
+  scroll-margin-top: calc(var(--vp-nav-height) + 1.5rem);
+}
+
 /* @mdit/plugin-mark + @nolebase/vitepress-plugin-enhanced-mark: ==highlighted text== from Outline */
 .vp-doc mark {
   --vp-nolebase-mark-bg-color: color-mix(in srgb, var(--accent) 28%, transparent);
@@ -578,6 +648,62 @@ a:hover > .vp-post-card-title {
   border-left-color: var(--vp-custom-block-danger-border);
 }
 
+/* VitePress gives its own callouts a full border via `border-color`; match that */
+.vp-doc .custom-block.success {
+  border-color: var(--vp-custom-block-success-border);
+  color: var(--vp-custom-block-success-text);
+  background-color: var(--vp-custom-block-success-bg);
+}
+
+.vp-doc .custom-block.success a,
+.vp-doc .custom-block.success code {
+  color: inherit;
+}
+
+/* Outline toggle blocks (+++ … +++), rendered as <details> */
+.vp-doc .custom-block.details {
+  border-left-color: var(--border);
+  background-color: var(--background-soft);
+}
+
+.vp-doc .custom-block.details summary {
+  margin: 0;
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+
+.vp-doc .custom-block.details summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Chevron that rotates to point down while open (opening/closing animated by theme/details-animation.ts) */
+.vp-doc .custom-block.details summary::before {
+  content: '';
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 0.45em;
+  vertical-align: -0.1em;
+  background-color: var(--accent);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  transition: transform 260ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.vp-doc .custom-block.details[open]:not(.is-closing) > summary::before {
+  transform: rotate(90deg);
+}
+
+.vp-doc .custom-block.details[open] > summary {
+  margin-bottom: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-doc .custom-block.details summary::before {
+    transition: none;
+  }
+}
+
 .vp-doc .custom-block-title {
   font-weight: 700;
   text-transform: uppercase;
@@ -613,12 +739,85 @@ a:hover > .vp-post-card-title {
   border-radius: 0 !important;
   border-bottom: 1px dashed var(--border);
   background-color: var(--background-soft);
+  /* VitePress draws its own solid divider here as an inset shadow; the dashed border replaces it */
+  box-shadow: none;
+  /* Positioning context for the sliding underline (theme/code-tab-slider.ts) */
+  position: relative;
+}
+
+/* The underline moves by sliding (theme/code-tab-slider.ts), so drop VitePress's 0.25s colour fade:
+   otherwise the static underline fades back in from transparent as the sliding bar hands over to it */
+.vp-doc .vp-code-group .tabs label::after {
+  transition: none;
+}
+
+/* While the underline slides to a new tab, a travelling bar stands in for the static per-tab one */
+.vp-doc .vp-code-group .tabs.is-tab-sliding label::after {
+  background-color: transparent !important;
+}
+
+.vp-doc .vp-tab-slider {
+  position: absolute;
+  z-index: 1;
+  height: 2px;
+  border-radius: 2px;
+  background-color: var(--vp-code-tab-active-bar-color);
+  pointer-events: none;
+}
+
+/* Tab and title bars still scroll sideways when long filename labels overflow on narrow screens, but
+   without a scrollbar wedged between the labels and the dashed divider */
+.vp-doc .vp-code-group .tabs,
+.vp-doc .vp-code-block-title-bar {
+  scrollbar-width: none;
+}
+
+.vp-doc .vp-code-group .tabs::-webkit-scrollbar,
+.vp-doc .vp-code-block-title-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .vp-doc .vp-code-group div[class*="language-"] {
   border: none !important;
   border-radius: 0 !important;
   margin: 0 !important;
+}
+
+/* Lone code blocks with a `[!filename]`: title bar from vitepress-plugin-group-icons, styled like a code group */
+.vp-doc .vp-code-block-title {
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+
+.vp-doc .vp-code-block-title-bar {
+  margin: 0 !important;
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1px dashed var(--border);
+  background-color: var(--background-soft);
+  color: var(--vp-code-tab-active-text-color);
+}
+
+.vp-doc .vp-code-block-title div[class*="language-"] {
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+
+/* Corner label showing `filename · language` (tabs with both `[!tab]` and `[!filename]`) stays visible on
+   hover, so the copy button moves below it instead of replacing it */
+.vp-doc [class*="language-"] > span.lang.has-filename {
+  opacity: 1 !important;
+}
+
+.vp-doc [class*="language-"] > span.lang .lang-filename {
+  color: var(--vp-code-tab-active-text-color);
+}
+
+.vp-doc [class*="language-"]:has(> span.lang.has-filename) > button.copy {
+  top: 24px;
 }
 
 /* Mermaid diagrams container */

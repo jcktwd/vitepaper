@@ -1,227 +1,39 @@
 import fs from 'node:fs/promises'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { createContentLoader, defineConfig, type SiteConfig } from 'vitepress'
-import { figure } from '@mdit/plugin-figure'
-import { imgSize, legacyImgSize, obsidianImgSize } from '@mdit/plugin-img-size'
-import { mark } from '@mdit/plugin-mark'
-import { tasklist } from '@mdit/plugin-tasklist'
-import { UnlazyImages } from '@nolebase/markdown-it-unlazy-img'
-import { InlineLinkPreviewElementTransform } from '@nolebase/vitepress-plugin-inline-link-preview/markdown-it'
 import { transformHeadMeta } from '@nolebase/vitepress-plugin-meta/vitepress'
-import { buildEndGenerateOpenGraphImages } from '@nolebase/vitepress-plugin-og-image/vitepress'
-import { ThumbnailHashImages } from '@nolebase/vitepress-plugin-thumbnail-hash/vite'
 import tailwindcss from '@tailwindcss/vite'
-import YAML from 'yaml'
+import { groupIconVitePlugin } from 'vitepress-plugin-group-icons'
+import {
+  createContentLoader,
+  defineConfigWithTheme,
+  type DefaultTheme,
+  type HeadConfig,
+  type UserConfig,
+} from 'vitepress'
 import siteConfig from '../../vitepaper.config.ts'
+import { resolveSiteLogo } from './lib/logo.ts'
+import { configureMarkdown } from './lib/markdown/index.ts'
+import { buildPostsActiveMatch, getOutlineNavItems } from './lib/nav.ts'
+import { generateOgImages } from './lib/og-images.ts'
+import { POSTS_DIR, PUBLIC_DIR } from './lib/paths.ts'
+import { buildRssXml } from './lib/rss.ts'
+import { renderSearchEntry } from './lib/search.ts'
+import { toThemeSocialLinks } from './lib/socials.ts'
+import { createVitePaperThumbnailHashPlugin } from './lib/thumbhash.ts'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const POSTS_DIR = path.resolve(__dirname, '..', 'posts')
-const PUBLIC_DIR = path.resolve(__dirname, '..', 'public')
-
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
+/** Default theme config plus the custom keys read by the theme's <PostList /> */
+export interface VitePaperThemeConfig extends DefaultTheme.Config {
+  intro: string
+  postsPerPage: number
 }
 
-/**
- * Resolves `site.logo` from `vitepaper.config.ts` into VitePress's navbar `logo`
- * and browser `<link rel="icon">` favicon.
- * Supports:
- * - Iconify identifiers (`collection:icon`, e.g. `'majesticons:door-exit'`)
- * - Public file paths (`'/logo.svg'`)
- * - Theme objects (`{ light: '...', dark: '...' }`)
- */
-function resolveSiteLogo(logo?: string | { light: string; dark: string }) {
-  if (!logo) return { navLogo: undefined, faviconHref: undefined }
+type VitePlugins = NonNullable<NonNullable<UserConfig['vite']>['plugins']>
 
-  if (typeof logo === 'object') {
-    return { navLogo: logo, faviconHref: logo.light }
-  }
-
-  // Check if it's an Iconify identifier (`prefix:name`, not starting with http/slash)
-  if (/^[a-z0-9-]+:[a-z0-9-]+$/i.test(logo)) {
-    const [prefix, name] = logo.split(':')
-    return {
-      navLogo: {
-        light: `https://api.iconify.design/${prefix}/${name}.svg?color=%23e14a39`,
-        dark: `https://api.iconify.design/${prefix}/${name}.svg?color=%23ff6b01`,
-      },
-      faviconHref: `https://api.iconify.design/${prefix}/${name}.svg?color=%23e14a39`,
-    }
-  }
-
-  return { navLogo: logo, faviconHref: logo }
-}
-
-/**
- * Dynamically discovers synced Outline articles that have `nav: <label>` in frontmatter
- * so any Outline article can appear on the top navigation bar automatically.
- */
-function getOutlineNavItems(): Array<{ text: string; link: string; activeMatch: string }> {
-  if (!existsSync(POSTS_DIR)) return []
-  const items: Array<{ text: string; link: string; activeMatch: string; order: number }> = []
-
-  for (const file of readdirSync(POSTS_DIR)) {
-    if (!file.endsWith('.md')) continue
-    const raw = readFileSync(path.join(POSTS_DIR, file), 'utf8')
-    const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/)
-    if (!fmMatch) continue
-    try {
-      const fm = YAML.parse(fmMatch[1])
-      if (fm && fm.nav && !fm.draft) {
-        const slug = file.replace(/\.md$/, '')
-        const label = typeof fm.nav === 'string' ? fm.nav : fm.title || slug
-        items.push({
-          text: label,
-          link: `/posts/${slug}`,
-          activeMatch: `^/posts/${slug}`,
-          order: Number(fm.navOrder ?? 50),
-        })
-      }
-    } catch {
-      // Ignore invalid frontmatter
-    }
-  }
-
-  return items
-    .sort((a, b) => a.order - b.order || a.text.localeCompare(b.text))
-    .map(({ text, link, activeMatch }) => ({ text, link, activeMatch }))
-}
-
+const baseUrl = siteConfig.site.url.replace(/\/+$/, '')
 const { navLogo, faviconHref } = resolveSiteLogo(siteConfig.site.logo)
-const outlineNavItems = getOutlineNavItems()
-const navSlugs = outlineNavItems
-  .map((item) => item.link.replace(/^\/posts\//, ''))
-  .filter(Boolean)
-const postsActiveMatch =
-  navSlugs.length > 0
-    ? `^/posts(?:$|/(?!(?:${navSlugs.join('|')})(?:$|/|\\.html)))`
-    : '^/posts'
+const outlineNavItems = getOutlineNavItems(POSTS_DIR)
 
-/**
- * Wraps `@nolebase/vitepress-plugin-thumbnail-hash`'s Vite plugin so that:
- * 1. Concurrent Vite client + SSR builds share a single execution promise instead of racing on `map.json`
- * 2. `.webp` images under `content/public/` are also ThumbHashed via `canvaskit-wasm` + `thumbhash`
- * 3. Every `"public/*"` entry in `map.json` is aliased without the `"public/"` prefix (e.g. `"attachments/..."`)
- *    before `configResolved` resolves, so `@nolebase/markdown-it-unlazy-img` finds `/attachments/...` URLs cleanly.
- */
-function createVitePaperThumbnailHashPlugin() {
-  const basePlugin = ThumbnailHashImages() as any
-  const origConfigResolved = basePlugin.configResolved
-  let sharedRunPromise: Promise<void> | null = null
-
-  return {
-    ...basePlugin,
-    async configResolved(config: any) {
-      if (!sharedRunPromise) {
-        sharedRunPromise = (async () => {
-          if (typeof origConfigResolved === 'function') {
-            await origConfigResolved.call(this, config)
-          }
-          const mapPath = path.join(
-            config.vitepress.cacheDir,
-            '@nolebase',
-            'vitepress-plugin-thumbnail-hash',
-            'thumbhashes',
-            'map.json'
-          )
-          if (!existsSync(mapPath)) return
-          const raw = await fs.readFile(mapPath, 'utf8')
-          const map = JSON.parse(raw) as Record<string, any>
-          let changed = false
-
-          // Also hash any .webp files in content/public/attachments/ (since @nolebase only globs jpg/jpeg/png by default)
-          const attachmentsDir = path.join(PUBLIC_DIR, 'attachments')
-          if (existsSync(attachmentsDir)) {
-            const webpFiles = readdirSync(attachmentsDir).filter((f) =>
-              f.toLowerCase().endsWith('.webp')
-            )
-            if (webpFiles.length > 0) {
-              const { createRequire } = await import('node:module')
-              const { pathToFileURL } = await import('node:url')
-              const pluginReq = createRequire(
-                createRequire(import.meta.url).resolve('@nolebase/vitepress-plugin-thumbnail-hash')
-              )
-              const CanvasKitInit = (
-                await import(pathToFileURL(pluginReq.resolve('canvaskit-wasm')).href)
-              ).default
-              const { rgbaToThumbHash, thumbHashToDataURL } = await import(
-                pathToFileURL(pluginReq.resolve('thumbhash')).href
-              )
-              const canvasKit = await CanvasKitInit()
-
-              for (const file of webpFiles) {
-                const relKey = `public/attachments/${file}`
-                if (map[relKey]) continue
-                try {
-                  const buf = await fs.readFile(path.join(attachmentsDir, file))
-                  const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
-                  const img = canvasKit.MakeImageFromEncoded(ab)
-                  if (!img) continue
-                  const origW = img.width()
-                  const origH = img.height()
-                  const scale = 100 / Math.max(origW, origH)
-                  const w = Math.round(origW * scale)
-                  const h = Math.round(origH * scale)
-                  const canvas = canvasKit.MakeCanvas(w, h)
-                  const ctx = canvas.getContext('2d')
-                  ctx.drawImage(img, 0, 0, w, h)
-                  const pixels = ctx.getImageData(0, 0, w, h)
-                  const hashBin = rgbaToThumbHash(pixels.width, pixels.height, pixels.data)
-                  const dataBase64 = Buffer.from(hashBin).toString('base64')
-                  const dataUrl = await thumbHashToDataURL(hashBin)
-                  map[relKey] = {
-                    dataBase64,
-                    dataUrl,
-                    width: w,
-                    height: h,
-                    originalWidth: origW,
-                    originalHeight: origH,
-                    assetFileName: relKey,
-                    assetFullFileName: `content/${relKey}`,
-                  }
-                  changed = true
-                } catch {
-                  // Ignore unreadable webp
-                }
-              }
-            }
-          }
-
-          for (const [key, val] of Object.entries(map)) {
-            if (key.startsWith('public/')) {
-              const publicAlias = key.slice('public/'.length)
-              if (!(publicAlias in map)) {
-                map[publicAlias] = val
-                changed = true
-              }
-              if (publicAlias.endsWith('.webp') && !(`${publicAlias}.png` in map)) {
-                map[`${publicAlias}.png`] = val
-                changed = true
-              }
-            }
-            if (key.endsWith('.webp') && !(`${key}.png` in map)) {
-              map[`${key}.png`] = val
-              changed = true
-            }
-          }
-          if (changed) {
-            await fs.writeFile(mapPath, JSON.stringify(map, null, 2), 'utf8')
-          }
-        })()
-      }
-      await sharedRunPromise
-    },
-  }
-}
-
-export default defineConfig({
+export default defineConfigWithTheme<VitePaperThemeConfig>({
   title: siteConfig.site.title,
   description: siteConfig.site.description,
   cleanUrls: true,
@@ -235,7 +47,7 @@ export default defineConfig({
   },
 
   head: [
-    ...(faviconHref ? [['link', { rel: 'icon', type: 'image/svg+xml', href: faviconHref }] as [string, Record<string, string>]] : []),
+    ...(faviconHref ? [['link', { rel: 'icon', type: 'image/svg+xml', href: faviconHref }] satisfies HeadConfig] : []),
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
     [
@@ -251,14 +63,13 @@ export default defineConfig({
         rel: 'alternate',
         type: 'application/rss+xml',
         title: `${siteConfig.site.title} RSS Feed`,
-        href: `${siteConfig.site.url.replace(/\/+$/, '')}/rss.xml`,
+        href: `${baseUrl}/rss.xml`,
       },
     ],
   ],
 
   async transformHead(context) {
-    let head = [...context.head]
-    const returnedHead = await transformHeadMeta({
+    const head = await transformHeadMeta({
       handleExcerpt: async (excerpt, ctx) => {
         const fmDesc = ctx.pageData.frontmatter?.description
         if (typeof fmDesc === 'string' && fmDesc.trim()) {
@@ -266,15 +77,13 @@ export default defineConfig({
         }
         return excerpt || siteConfig.site.description
       },
-    })(head, context)
-    if (typeof returnedHead !== 'undefined') {
-      head = returnedHead
-    }
-    return head
+    })([...context.head], context)
+    return head ?? [...context.head]
   },
 
   vite: {
-    plugins: [tailwindcss() as any, createVitePaperThumbnailHashPlugin()],
+    // These plugins are typed against a newer Vite major than VitePress 1.x bundles; they work at runtime
+    plugins: [tailwindcss(), createVitePaperThumbnailHashPlugin(PUBLIC_DIR), groupIconVitePlugin()] as unknown as VitePlugins,
     optimizeDeps: {
       exclude: [
         '@nolebase/vitepress-plugin-inline-link-preview/client',
@@ -303,322 +112,7 @@ export default defineConfig({
       aml: 'c',
       conf: 'ini',
     },
-    config(md) {
-      // 0. Outline Markdown parity plugins (tasklists, ==highlight==, image sizing, <figure> captions, inline link previews, & ThumbHash lazy images)
-      md.use(tasklist)
-      md.use(mark)
-      md.use(legacyImgSize)
-      md.use(imgSize)
-      md.use(obsidianImgSize)
-      md.use(figure, { focusable: false })
-      md.use(InlineLinkPreviewElementTransform)
-      md.use(UnlazyImages(), {
-        imgElementTag: 'NolebaseUnlazyImg',
-      })
-
-      // Ensure markdown-it image tokens populate `alt` in `token.attrs` so UnlazyImages forwards the alt text to <NolebaseUnlazyImg>,
-      // support `.webp` images in UnlazyImages, preserve proportional aspect ratio when only `width` or `height` is set,
-      // and ensure `env.relativePath` is present when `createContentLoader` renders markdown.
-      const unlazyImageRule = md.renderer.rules.image!
-      md.renderer.rules.image = (tokens, idx, options, env, self) => {
-        const token = tokens[idx]
-        if (!token.attrGet('alt') && token.content) {
-          token.attrSet('alt', token.content)
-        }
-        if (env && !env.path && !env.relativePath) {
-          env.relativePath = 'index.md'
-        }
-        const origSrc = token.attrGet('src')
-        const explicitWidth = token.attrGet('width')
-        const explicitHeight = token.attrGet('height')
-
-        // Temporarily clear single-axis width/height so UnlazyImages emits the natural originalWidth & originalHeight
-        if (explicitWidth && !explicitHeight && token.attrs) {
-          token.attrs = token.attrs.filter(([k]) => k !== 'width')
-        } else if (explicitHeight && !explicitWidth && token.attrs) {
-          token.attrs = token.attrs.filter(([k]) => k !== 'height')
-        }
-
-        const isLocalWebp =
-          origSrc && !/^(?:[a-z]+:|\/\/)/i.test(origSrc) && origSrc.toLowerCase().endsWith('.webp')
-        if (isLocalWebp) {
-          token.attrSet('src', `${origSrc}.png`)
-        }
-        let rendered = unlazyImageRule(tokens, idx, options, env, self)
-        if (isLocalWebp && origSrc) {
-          token.attrSet('src', origSrc)
-          rendered = rendered.replace(/\.webp\.png"/g, '.webp"')
-        }
-
-        // Restore explicit single-axis dimension and compute proportional counterpart from natural dimensions
-        if (explicitWidth && !explicitHeight) {
-          token.attrSet('width', explicitWidth)
-          const m = rendered.match(/\bwidth="(\d+)"\s+height="(\d+)"/)
-          if (m) {
-            const natW = Number(m[1])
-            const natH = Number(m[2])
-            const targetW = Number(explicitWidth)
-            if (natW > 0 && natH > 0 && targetW > 0) {
-              const targetH = Math.max(1, Math.round((targetW * natH) / natW))
-              rendered = rendered
-                .replace(/\bautoSizes="true"/, 'autoSizes="false"')
-                .replace(/\bwidth="\d+"\s+height="\d+"/, `width="${targetW}" height="${targetH}"`)
-            }
-          }
-        } else if (explicitHeight && !explicitWidth) {
-          token.attrSet('height', explicitHeight)
-          const m = rendered.match(/\bwidth="(\d+)"\s+height="(\d+)"/)
-          if (m) {
-            const natW = Number(m[1])
-            const natH = Number(m[2])
-            const targetH = Number(explicitHeight)
-            if (natW > 0 && natH > 0 && targetH > 0) {
-              const targetW = Math.max(1, Math.round((targetH * natW) / natH))
-              rendered = rendered
-                .replace(/\bautoSizes="true"/, 'autoSizes="false"')
-                .replace(/\bwidth="\d+"\s+height="\d+"/, `width="${targetW}" height="${targetH}"`)
-            }
-          }
-        }
-
-        return rendered
-      }
-
-      // 1. Normalize Outline ProseMirror inline-code + bold serialization quirks, resized image titles, & tabbed code blocks
-      md.core.ruler.before('normalize', 'outline-prosemirror-fixes', (state) => {
-        state.src = state.src
-          .replace(/\*\*`\*\*([^`\n]+)\*\*`\*\*/g, '`$1`')
-          .replace(/`\*\*([^`\n]+)\*\*`/g, '**`$1`**')
-          .replace(/`([^`\n]+)`{2}\*([^*\n]+)\*`/g, '`$1$2`')
-          // Outline stores resized image dimensions in the Markdown image title: ![alt](url " =360x240")
-          // Convert to legacyImgSize syntax (![alt](url =360x240)) so @mdit/plugin-img-size sets width/height
-          // and @mdit/plugin-figure uses the alt text for <figcaption>.
-          .replace(
-            /(!\[[^\]]*\]\([^)\s"]+)[ \t]+"\s*(?:source=\S+\s*)?(?:(?:right-50|left-50|full-width)\s*)?(=\d*%?x\d*%?)\s*"\)/g,
-            '$1 $2)'
-          )
-
-        // Transform consecutive fenced code blocks with `tab` (and optional named `tab-group`) metadata
-        // into native VitePress `::: code-group` containers.
-        // Supports both:
-        //   1. YAML frontmatter at top of code block (`---\ntab-group: req\ntab: Headers\n---` or `--- tab-group: req, tab: Headers ---`)
-        //   2. Bracketed shorthand (`[tab-group: req, tab: Headers]`, `[tab-group: req] [tab: Headers]`, or on 2 lines)
-        function extractCodeBlockTabMeta(rawBody: string): {
-          body: string
-          tab?: string
-          group?: string
-        } {
-          // 1. Check for multi-line `---\n...\n---` YAML frontmatter at the very top of the code block
-          const multiYamlMatch = rawBody.match(/^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/)
-          if (multiYamlMatch) {
-            try {
-              const parsed = YAML.parse(multiYamlMatch[1])
-              if (parsed && typeof parsed === 'object' && typeof parsed.tab === 'string' && parsed.tab.trim()) {
-                const group =
-                  typeof parsed['tab-group'] === 'string' && parsed['tab-group'].trim()
-                    ? parsed['tab-group'].trim()
-                    : undefined
-                return {
-                  body: rawBody.slice(multiYamlMatch[0].length),
-                  tab: parsed.tab.trim(),
-                  group,
-                }
-              }
-            } catch {
-              // Not valid tab frontmatter; leave code untouched
-            }
-          }
-
-          // 2. Check for single-line `--- ... ---` frontmatter at the top of the code block
-          const singleYamlMatch = rawBody.match(/^---[ \t]+([^\n]+?)[ \t]+---[ \t]*(?:\n|$)/)
-          if (singleYamlMatch) {
-            try {
-              const inner = singleYamlMatch[1].trim()
-              const yamlText = inner.startsWith('{') ? inner : `{ ${inner} }`
-              const parsed = YAML.parse(yamlText)
-              if (parsed && typeof parsed === 'object' && typeof parsed.tab === 'string' && parsed.tab.trim()) {
-                const group =
-                  typeof parsed['tab-group'] === 'string' && parsed['tab-group'].trim()
-                    ? parsed['tab-group'].trim()
-                    : undefined
-                return {
-                  body: rawBody.slice(singleYamlMatch[0].length),
-                  tab: parsed.tab.trim(),
-                  group,
-                }
-              }
-            } catch {
-              // Not valid single-line tab frontmatter
-            }
-          }
-
-          // 3. Check up to 2 leading lines for bracketed shorthand:
-          //    `[tab: Title]`, `[tab-group: name, tab: Title]`, `[tab-group: name] [tab: Title]`, or on 2 lines
-          let body = rawBody
-          let tab: string | undefined
-          let group: string | undefined
-
-          for (let lineIdx = 0; lineIdx < 2; lineIdx++) {
-            const firstLineEnd = body.indexOf('\n')
-            const firstLine = (firstLineEnd === -1 ? body : body.slice(0, firstLineEnd)).trim()
-            if (!firstLine.startsWith('[') || !firstLine.endsWith(']')) break
-
-            const bracketGroups = [...firstLine.matchAll(/\[([^\]]+)\]/g)]
-            if (bracketGroups.length === 0) break
-
-            const stripped = firstLine.replace(/\[[^\]]+\]/g, '').trim()
-            if (stripped !== '') break
-
-            let matchedDirective = false
-            for (const bg of bracketGroups) {
-              const parts = bg[1].split(/[,;]+/).map((s) => s.trim()).filter(Boolean)
-              for (const part of parts) {
-                const gm = part.match(/^tab-group:\s*(.+)$/i)
-                const tm = part.match(/^tab:\s*(.+)$/i)
-                if (gm && gm[1].trim()) {
-                  group = gm[1].trim()
-                  matchedDirective = true
-                } else if (tm && tm[1].trim()) {
-                  tab = tm[1].trim()
-                  matchedDirective = true
-                } else {
-                  // Unknown token inside brackets (e.g. JSON array or INI section) -> abort
-                  return { body: rawBody }
-                }
-              }
-            }
-
-            if (matchedDirective) {
-              body = firstLineEnd === -1 ? '' : body.slice(firstLineEnd + 1)
-            } else {
-              break
-            }
-          }
-
-          if (!tab) return { body: rawBody }
-          return { body, tab, group }
-        }
-
-        const fenceRunRe = /(?:^```[^\n]*\n[\s\S]*?^```[ \t]*(?:\n|$))(?:[ \t]*\n*^```[^\n]*\n[\s\S]*?^```[ \t]*(?:\n|$))*/gm
-        const singleFenceRe = /^```([^\n]*)\n([\s\S]*?)^```[ \t]*$/gm
-
-        state.src = state.src.replace(fenceRunRe, (runChunk) => {
-          const blocks: Array<{
-            raw: string
-            lang: string
-            body: string
-            tab?: string
-            group?: string
-          }> = []
-
-          for (const match of runChunk.matchAll(singleFenceRe)) {
-            const lang = match[1].trim()
-            const { body, tab, group } = extractCodeBlockTabMeta(match[2])
-            blocks.push({ raw: match[0], lang, body, tab, group })
-          }
-
-          if (!blocks.some((b) => b.tab)) {
-            return runChunk
-          }
-
-          const out: string[] = []
-          let currentGroupKey: string | null = null
-
-          for (const b of blocks) {
-            if (!b.tab) {
-              if (currentGroupKey !== null) {
-                out.push(':::\n')
-                currentGroupKey = null
-              }
-              out.push(b.raw + '\n')
-              continue
-            }
-
-            const groupKey = b.group ? `named:${b.group.toLowerCase()}` : 'default'
-            if (currentGroupKey !== groupKey) {
-              if (currentGroupKey !== null) {
-                out.push(':::\n')
-              }
-              out.push('::: code-group\n')
-              currentGroupKey = groupKey
-            }
-
-            const fenceLang = b.lang || 'txt'
-            out.push(`\`\`\`${fenceLang} [${b.tab}]\n${b.body}\`\`\`\n`)
-          }
-
-          if (currentGroupKey !== null) {
-            out.push(':::\n')
-          }
-
-          return out.join('\n')
-        })
-      })
-
-      // 2. Render ```mermaid fenced blocks via our native <Mermaid /> Vue component
-      const defaultFence = md.renderer.rules.fence!
-      md.renderer.rules.fence = (tokens, idx, options, env, self) => {
-        const token = tokens[idx]
-        if (token.info.trim().toLowerCase() === 'mermaid') {
-          return `<Mermaid code="${encodeURIComponent(token.content)}" />`
-        }
-        return defaultFence(tokens, idx, options, env, self)
-      }
-
-      // 3. Support Outline-friendly inline tokens:
-      //    - `integration: socials` (or `vitepaper: socials`) -> <SocialLinks />
-      //    - `icon:<brand>` or `icon:<prefix>:<name>` -> inline Iconify / Simple Icons SVG
-      const ICON_SHORTHANDS: Record<string, string> = {
-        vue: 'simple-icons/vuedotjs',
-        nodejs: 'simple-icons/nodedotjs',
-        node: 'simple-icons/nodedotjs',
-        nextjs: 'simple-icons/nextdotjs',
-        csharp: 'simple-icons/csharp',
-        'c#': 'simple-icons/csharp',
-        cpp: 'simple-icons/cplusplus',
-        'c++': 'simple-icons/cplusplus',
-        '.net': 'simple-icons/dotnet',
-        tailwind: 'simple-icons/tailwindcss',
-        postgres: 'simple-icons/postgresql',
-        ha: 'simple-icons/homeassistant',
-        rss: 'lucide/rss',
-      }
-      const MULTICOLOR_PREFIXES = new Set(['logos', 'devicon', 'vscode-icons', 'skill-icons', 'fluent-emoji', 'twemoji', 'noto'])
-
-      const defaultCodeInline = md.renderer.rules.code_inline!
-      md.renderer.rules.code_inline = (tokens, idx, options, env, self) => {
-        const raw = tokens[idx].content.trim()
-
-        if (/^(?:integration|vitepaper):\s*socials$/i.test(raw)) {
-          return '<SocialLinks />'
-        }
-
-        if (/^icon:[a-z0-9_+#.-]+(?::[a-z0-9_+#.-]+)?$/i.test(raw)) {
-          const spec = raw.slice(5).toLowerCase()
-          let iconPath: string
-          let prefix = 'simple-icons'
-
-          if (ICON_SHORTHANDS[spec]) {
-            iconPath = ICON_SHORTHANDS[spec]
-            prefix = iconPath.split('/')[0]
-          } else if (spec.includes(':')) {
-            const parts = spec.split(':')
-            prefix = parts[0]
-            iconPath = `${parts[0]}/${parts[1]}`
-          } else {
-            iconPath = `simple-icons/${spec}`
-          }
-
-          const url = `https://api.iconify.design/${iconPath}.svg`
-          if (MULTICOLOR_PREFIXES.has(prefix)) {
-            return `<img class="vp-inline-icon-img" src="${url}" alt="${spec}" loading="lazy" />`
-          }
-          return `<span class="vp-inline-icon vp-mask-icon" style="--icon-url: url('${url}')" role="img" aria-label="${spec}"></span>`
-        }
-
-        return defaultCodeInline(tokens, idx, options, env, self)
-      }
-    },
+    config: configureMarkdown,
   },
 
   themeConfig: {
@@ -627,7 +121,7 @@ export default defineConfig({
     postsPerPage: siteConfig.site.postsPerPage,
 
     nav: [
-      { text: 'Posts', link: '/posts', activeMatch: postsActiveMatch },
+      { text: 'Posts', link: '/posts', activeMatch: buildPostsActiveMatch(outlineNavItems) },
       { text: 'Tags', link: '/tags', activeMatch: '^/tags' },
       ...outlineNavItems,
     ],
@@ -646,86 +140,21 @@ export default defineConfig({
             },
           },
         },
-        _render(src: string, env: any, md: any) {
-          const html = md.render(src, env)
-          if (
-            env.frontmatter?.draft ||
-            env.relativePath === 'drafts.md' ||
-            env.frontmatter?.search === false
-          ) {
-            return ''
-          }
-
-          const rawTitle = env.frontmatter?.title ? String(env.frontmatter.title).trim() : ''
-          if (!rawTitle) {
-            return html
-          }
-
-          const icon = env.frontmatter?.icon ? `${String(env.frontmatter.icon).trim()} ` : ''
-          const fullTitle = `${icon}${rawTitle}`
-          const description = env.frontmatter?.description
-            ? String(env.frontmatter.description).trim()
-            : ''
-          const tags: string[] = Array.isArray(env.frontmatter?.tags)
-            ? env.frontmatter.tags.map((t: unknown) => String(t).trim()).filter(Boolean)
-            : []
-
-          const tagsDisplay = tags.map((t) => `#${t}`).join(' ')
-          const tagsSearchable = tags.map((t) => `#${t} ${t.replace(/-/g, ' ')}`).join(' ')
-
-          const prefixParts: string[] = [
-            `<h1 id="post-title">${escapeXml(fullTitle)} <a class="header-anchor" href="#post-title">&#8203;</a></h1>`,
-            `<p>${escapeXml(rawTitle)} ${escapeXml(description)} ${escapeXml(tagsSearchable)}</p>`,
-          ]
-
-          const metaSummary = [tagsDisplay, description].filter(Boolean).join(' · ')
-          if (metaSummary) {
-            prefixParts.push(
-              `<h6 id="post-summary">${escapeXml(metaSummary)} <a class="header-anchor" href="#post-summary">&#8203;</a></h6>`,
-              `<p>${escapeXml(rawTitle)} ${escapeXml(tagsSearchable)} ${escapeXml(description)}</p>`
-            )
-          }
-
-          return `${prefixParts.join('\n')}\n${html}`
-        },
+        _render: renderSearchEntry,
       },
     },
 
-    socialLinks: siteConfig.site.socials.map((item) => {
-      const iconLower = typeof item.icon === 'string' ? item.icon.toLowerCase() : ''
-      const isMail = iconLower === 'mail' || iconLower === 'email'
-      const isRss = iconLower === 'rss'
-
-      let resolvedIcon: string | { svg: string } = item.icon
-      if (isMail) {
-        resolvedIcon = {
-          svg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
-        }
-      } else if (isRss) {
-        resolvedIcon = {
-          svg: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>',
-        }
-      }
-
-      return {
-        icon: resolvedIcon,
-        link: item.link,
-        ariaLabel: item.label || (isMail ? 'Email' : isRss ? 'RSS Feed' : item.icon),
-      }
-    }),
+    socialLinks: toThemeSocialLinks(siteConfig.site.socials),
 
     footer: {
       message:
         'Published with <a href="https://www.getoutline.com/" target="_blank" rel="noopener">Outline</a> &amp; <a href="https://vitepress.dev/" target="_blank" rel="noopener">VitePress</a> • Theme inspired by <a href="https://github.com/satnaing/astro-paper" target="_blank" rel="noopener">AstroPaper</a>',
       copyright: `Copyright © ${new Date().getFullYear()} ${siteConfig.site.author}`,
     },
-  } as any,
+  },
 
-  async buildEnd(site: SiteConfig) {
-    const posts = await createContentLoader('posts/*.md', {
-      excerpt: true,
-      render: true,
-    }).load()
+  async buildEnd(site) {
+    const posts = await createContentLoader('posts/*.md').load()
 
     const listedPosts = posts
       .filter((p) => !p.frontmatter.excludeFromPosts)
@@ -734,73 +163,23 @@ export default defineConfig({
           new Date(b.frontmatter.date || 0).getTime() - new Date(a.frontmatter.date || 0).getTime()
       )
 
-    const baseUrl = siteConfig.site.url.replace(/\/+$/, '')
-    const itemsXml = listedPosts
-      .map((post) => {
-        const postUrl = `${baseUrl}${post.url.replace(/\.html$/, '')}`
-        const pubDate = new Date(post.frontmatter.date || Date.now()).toUTCString()
-        const desc = post.frontmatter.description || ''
-        return `    <item>
-      <title>${escapeXml(post.frontmatter.title || 'Untitled')}</title>
-      <link>${escapeXml(postUrl)}</link>
-      <guid>${escapeXml(postUrl)}</guid>
-      <pubDate>${pubDate}</pubDate>
-      <description>${escapeXml(desc)}</description>
-    </item>`
-      })
-      .join('\n')
-
-    const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-  <channel>
-    <title>${escapeXml(siteConfig.site.title)}</title>
-    <link>${escapeXml(baseUrl)}</link>
-    <description>${escapeXml(siteConfig.site.description)}</description>
-    <language>en-gb</language>
-    <atom:link href="${escapeXml(baseUrl)}/rss.xml" rel="self" type="application/rss+xml"/>
-${itemsXml}
-  </channel>
-</rss>
-`
+    const rssXml = buildRssXml({
+      title: siteConfig.site.title,
+      description: siteConfig.site.description,
+      baseUrl,
+      items: listedPosts.map((post) => ({
+        title: post.frontmatter.title || 'Untitled',
+        url: `${baseUrl}${post.url.replace(/\.html$/, '')}`,
+        date: post.frontmatter.date || Date.now(),
+        description: post.frontmatter.description || '',
+      })),
+    })
     await fs.writeFile(path.join(site.outDir, 'rss.xml'), rssXml, 'utf8')
 
-    // Populate virtual sidebar entries so @nolebase/vitepress-plugin-og-image discovers all pages & posts
-    site.site.themeConfig.sidebar = [
-      { text: siteConfig.site.title, link: '/' },
-      { text: 'Posts', link: '/posts' },
-      { text: 'Tags', link: '/tags' },
-      ...(existsSync(path.join(site.srcDir, 'drafts.md')) ? [{ text: 'Drafts', link: '/drafts' }] : []),
-      ...posts.map((p) => ({
-        text: p.frontmatter.title || 'Untitled',
-        link: p.url.replace(/\.html$/, ''),
-      })),
-    ]
-
-    const origDescription = site.site.description
-    const domainLabel = baseUrl.replace(/^https?:\/\//, '')
-    site.site.description = siteConfig.site.author
-      ? `${siteConfig.site.author}  •  ${domainLabel}`
-      : domainLabel
-
-    try {
-      await buildEndGenerateOpenGraphImages({
-        baseUrl,
-        maxCharactersPerLine: 26,
-        category: {
-          byCustomGetter: (page) => {
-            const tags = page.frontmatter?.tags
-            if (Array.isArray(tags) && tags.length > 0 && tags[0]) {
-              return `#${String(tags[0]).trim()}`
-            }
-            if (page.sourceFilePath.startsWith('/posts/')) {
-              return 'Article'
-            }
-            return siteConfig.site.title
-          },
-        },
-      })(site)
-    } finally {
-      site.site.description = origDescription
-    }
+    await generateOgImages(site, posts, {
+      baseUrl,
+      siteTitle: siteConfig.site.title,
+      author: siteConfig.site.author,
+    })
   },
 })
