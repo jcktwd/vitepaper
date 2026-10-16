@@ -85,6 +85,63 @@ describe('unlisted pages', () => {
   })
 })
 
+describe('social cards (OpenGraph)', () => {
+  // The fixture site builds with the default config's URL
+  const SITE = 'https://example.com'
+  const metas = (root: HTMLElement, key: string) =>
+    root
+      .querySelectorAll('meta')
+      .filter((m) => m.getAttribute('property') === key || m.getAttribute('name') === key)
+      .map((m) => m.getAttribute('content'))
+  /** Width and height from a PNG's IHDR chunk */
+  const pngSize = (file: string) => {
+    const buf = readFileSync(file)
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) }
+  }
+
+  const FIXTURE_DATES: Record<string, string> = {
+    'featured-teardown': '2026-05-01T09:00:00.000Z',
+    'linux-notes': '2026-04-01T09:00:00.000Z',
+    'older-post': '2026-03-01T09:00:00.000Z',
+  }
+
+  it.each(PUBLISHED)('%s is an article with canonical URL, dates, tags and a 1200x630 image', (slug) => {
+    const html = page(`posts/${slug}.html`)
+    const url = `${SITE}/posts/${slug}`
+
+    expect(metas(html, 'og:type')).toEqual(['article'])
+    expect(html.querySelectorAll('link[rel="canonical"]').map((l) => l.getAttribute('href'))).toEqual([url])
+    expect(metas(html, 'og:url')).toEqual([url])
+    expect(metas(html, 'og:site_name')).toHaveLength(1)
+    expect(metas(html, 'og:image:alt')[0]).toMatch(/ \| /)
+    expect(metas(html, 'article:published_time')).toEqual([FIXTURE_DATES[slug]])
+    expect(metas(html, 'article:tag').length).toBeGreaterThan(0)
+
+    const image = `${SITE}/posts/og-${slug}.png`
+    expect(metas(html, 'og:image')).toEqual([image])
+    expect(metas(html, 'twitter:image')).toEqual([image])
+    expect(metas(html, 'twitter:card')).toEqual(['summary_large_image'])
+    expect(pngSize(path.join(DIST, 'posts', `og-${slug}.png`))).toEqual({ width: 1200, height: 630 })
+  })
+
+  it('pages that are not posts are websites', () => {
+    expect(metas(page('index.html'), 'og:type')).toEqual(['website'])
+    expect(metas(page('index.html'), 'og:url')).toEqual([`${SITE}/`])
+    expect(metas(page('posts/about-me.html'), 'og:type')).toEqual(['website'])
+    expect(metas(page('posts/about-me.html'), 'article:published_time')).toEqual([])
+  })
+
+  it('every page has exactly one of each identity tag', () => {
+    for (const file of ['index.html', 'posts.html', 'tags.html', ...PUBLISHED.map((s) => `posts/${s}.html`)]) {
+      const html = page(file)
+      for (const key of ['og:type', 'og:url', 'og:title', 'og:image', 'og:site_name']) {
+        expect(metas(html, key), `${file} ${key}`).toHaveLength(1)
+      }
+      expect(html.querySelectorAll('link[rel="canonical"]'), `${file} canonical`).toHaveLength(1)
+    }
+  })
+})
+
 describe('post pages', () => {
   const featured = () => page('posts/featured-teardown.html')
 

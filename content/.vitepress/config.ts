@@ -11,6 +11,7 @@ import {
   type UserConfig,
 } from 'vitepress'
 import siteConfig from '../../vitepaper.config.ts'
+import { GOOGLE_FONTS_CSS_URL, loadGoogleFontBuffers } from './lib/fonts.ts'
 import { resolveSiteLogo } from './lib/logo.ts'
 import { configureMarkdown } from './lib/markdown/index.ts'
 import { buildPostsActiveMatch, getDraftSlugs, getOutlineNavItems } from './lib/nav.ts'
@@ -18,6 +19,7 @@ import { generateOgImages } from './lib/og-images.ts'
 import { POSTS_DIR, PUBLIC_DIR } from './lib/paths.ts'
 import { buildRssXml } from './lib/rss.ts'
 import { renderSearchEntry } from './lib/search.ts'
+import { buildSocialMeta, mergeHead } from './lib/social-meta.ts'
 import { toThemeSocialLinks } from './lib/socials.ts'
 import { createVitePaperThumbnailHashPlugin } from './lib/thumbhash.ts'
 
@@ -59,7 +61,7 @@ export default defineConfigWithTheme<VitePaperThemeConfig>({
       'link',
       {
         rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap',
+        href: GOOGLE_FONTS_CSS_URL,
       },
     ],
     [
@@ -83,7 +85,15 @@ export default defineConfigWithTheme<VitePaperThemeConfig>({
         return excerpt || siteConfig.site.description
       },
     })([...context.head], context)
-    return head ?? [...context.head]
+    return mergeHead(
+      head ?? [...context.head],
+      buildSocialMeta({
+        relativePath: context.pageData.relativePath,
+        frontmatter: context.pageData.frontmatter,
+        baseUrl,
+        siteTitle: siteConfig.site.title,
+      })
+    )
   },
 
   vite: {
@@ -185,6 +195,7 @@ export default defineConfigWithTheme<VitePaperThemeConfig>({
       baseUrl,
       siteTitle: siteConfig.site.title,
       author: siteConfig.site.author,
+      fontBuffers: await loadGoogleFontBuffers(GOOGLE_FONTS_CSS_URL, site.cacheDir),
     })
   },
 })

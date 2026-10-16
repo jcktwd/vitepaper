@@ -13,6 +13,7 @@ export default defineConfig(
       'content/.vitepress/dist-next/',
       'content/.vitepress/dist-old/',
       'fixture-content/',
+      '**/*.timestamp-*.mjs',
     ],
   },
   js.configs.recommended,

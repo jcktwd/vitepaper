@@ -1,19 +1,23 @@
+import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { buildEndGenerateOpenGraphImages } from '@nolebase/vitepress-plugin-og-image/vitepress'
 import type { ContentData, SiteConfig } from 'vitepress'
+import { isArticle, setOgType } from './social-meta.ts'
 
 interface OgImageOptions {
   baseUrl: string
   siteTitle: string
   author: string
+  /** TrueType fonts for the template's `font-family` (the plugin otherwise only has Source Han Sans) */
+  fontBuffers?: Buffer[]
 }
 
 /** Generates AstroPaper-branded `og-*.png` social cards for every page and post. */
 export async function generateOgImages(
   site: SiteConfig,
   posts: ContentData[],
-  { baseUrl, siteTitle, author }: OgImageOptions
+  { baseUrl, siteTitle, author, fontBuffers }: OgImageOptions
 ): Promise<void> {
   // The OG plugin discovers pages via the sidebar, so populate a virtual one listing all pages & posts
   site.site.themeConfig.sidebar = [
@@ -36,6 +40,7 @@ export async function generateOgImages(
     await buildEndGenerateOpenGraphImages({
       baseUrl,
       maxCharactersPerLine: 26,
+      svgFontBuffers: fontBuffers,
       category: {
         byCustomGetter: (page) => {
           const tags = page.frontmatter?.tags
@@ -52,4 +57,15 @@ export async function generateOgImages(
   } finally {
     site.site.description = origDescription
   }
+
+  // The plugin's HTML rewrite resets `og:type` to `website`; put `article` back on posts
+  await Promise.all(
+    posts
+      .filter((p) => isArticle(p.url.replace(/^\//, '').replace(/\.html$/, '') + '.md', p.frontmatter))
+      .map(async (p) => {
+        const file = path.join(site.outDir, `${p.url.replace(/^\//, '').replace(/\.html$/, '')}.html`)
+        if (!existsSync(file)) return
+        await fs.writeFile(file, setOgType(await fs.readFile(file, 'utf8'), 'article'), 'utf8')
+      })
+  )
 }

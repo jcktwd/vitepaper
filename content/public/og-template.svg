@@ -15,19 +15,19 @@
   </g>
 
   <!-- Primary Category / Tag Pill -->
-  <text fill="#ff6b01" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="30" font-weight="bold" letter-spacing="0.02em"><tspan x="76" y="160">{{category}}</tspan></text>
+  <text fill="#ff6b01" xml:space="preserve" style="white-space: pre" font-family="IBM Plex Mono" font-size="30" font-weight="bold" letter-spacing="0.02em"><tspan x="76" y="160">{{category}}</tspan></text>
 
   <!-- Post Title (Up to 3 Lines) -->
-  <text fill="#eaedf3" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="56" font-weight="bold" letter-spacing="-0.01em"><tspan x="76" y="250">{{line1}} </tspan></text>
-  <text fill="#eaedf3" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="56" font-weight="bold" letter-spacing="-0.01em"><tspan x="76" y="327">{{line2}} </tspan></text>
-  <text fill="#eaedf3" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="56" font-weight="bold" letter-spacing="-0.01em"><tspan x="76" y="404">{{line3}}</tspan></text>
+  <text fill="#eaedf3" xml:space="preserve" style="white-space: pre" font-family="IBM Plex Mono" font-size="56" font-weight="bold" letter-spacing="-0.01em"><tspan x="76" y="250">{{line1}} </tspan></text>
+  <text fill="#eaedf3" xml:space="preserve" style="white-space: pre" font-family="IBM Plex Mono" font-size="56" font-weight="bold" letter-spacing="-0.01em"><tspan x="76" y="327">{{line2}} </tspan></text>
+  <text fill="#eaedf3" xml:space="preserve" style="white-space: pre" font-family="IBM Plex Mono" font-size="56" font-weight="bold" letter-spacing="-0.01em"><tspan x="76" y="404">{{line3}}</tspan></text>
 
   <!-- Bottom Divider Line -->
   <line x1="76" y1="484" x2="1124" y2="484" stroke="#ab4b08" stroke-opacity="0.45" stroke-width="2" stroke-dasharray="6 6"/>
 
   <!-- Site Name (Left) & Author / Domain (Right) Footer -->
-  <text fill="#eaedf3" fill-opacity="0.95" xml:space="preserve" style="white-space: pre" font-family="Inter" font-size="26" font-weight="bold" letter-spacing="0em"><tspan x="76" y="534">{{siteName}}</tspan></text>
-  <text fill="#eaedf3" fill-opacity="0.65" xml:space="preserve" style="white-space: pre; text-anchor: end;" font-family="Inter" font-size="24" letter-spacing="0em"><tspan x="1124" y="534">{{siteDescription}}</tspan></text>
+  <text fill="#eaedf3" fill-opacity="0.95" xml:space="preserve" style="white-space: pre" font-family="IBM Plex Mono" font-size="26" font-weight="bold" letter-spacing="0em"><tspan x="76" y="534">{{siteName}}</tspan></text>
+  <text fill="#eaedf3" fill-opacity="0.65" xml:space="preserve" style="white-space: pre; text-anchor: end;" font-family="IBM Plex Mono" font-size="24" letter-spacing="0em"><tspan x="1124" y="534">{{siteDescription}}</tspan></text>
 
   <!-- Bottom Accent Bar -->
   <rect y="614" width="1200" height="16" fill="#ff6b01"/>

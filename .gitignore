@@ -27,3 +27,6 @@ Thumbs.db
 
 # Built-site test fixture (pnpm test:site)
 fixture-content/
+
+# Temporary config bundles Vite leaves behind if a process is killed mid-load
+*.timestamp-*.mjs
