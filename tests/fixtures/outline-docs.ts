@@ -49,6 +49,10 @@ export const fixtureDocs: FixtureDoc[] = [
         '',
         'Measured at 32 kHz.[^1]',
         '',
+        // A component rendered inside a paragraph, right before the footnotes: invalid nesting here made
+        // Vue drop the footnotes on hydration
+        '`integration: socials`',
+        '',
         '[^1]: With a logic analyser.',
       ].join('\n')
     ),

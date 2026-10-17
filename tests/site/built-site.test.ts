@@ -151,6 +151,27 @@ describe('social cards (OpenGraph)', () => {
   })
 })
 
+describe('valid HTML nesting', () => {
+  // A component whose root is a block element, rendered inside a paragraph, is invalid HTML: the
+  // server render splits the paragraph (`<p></p><div>…</div><p></p>`) while the client still renders
+  // it inside, so hydration mismatches and Vue drops what follows (this lost the footnotes after
+  // `integration: socials`). The split leaves empty paragraphs right next to block elements.
+  const BLOCK = '(?:div|section|article|aside|figure|table|ul|ol|dl|pre|blockquote|h[1-6]|hr|details|form|header|footer|nav)'
+  const SPLIT_PARAGRAPH = new RegExp(`<p></p><${BLOCK}\\b|</${BLOCK}><p></p>`, 'g')
+
+  it('no built page has a paragraph split around a block element', () => {
+    for (const file of ['index.html', 'posts.html', 'tags.html', ...PUBLISHED.map((s) => `posts/${s}.html`), 'posts/about-me.html']) {
+      expect(read(file).match(SPLIT_PARAGRAPH) ?? [], file).toEqual([])
+    }
+  })
+
+  it('the socials token renders inline, with the footnotes after it intact', () => {
+    const doc = page('posts/featured-teardown.html').querySelector('.vp-doc')!
+    expect(doc.querySelector('p > span.vp-social-links')).not.toBeNull()
+    expect(doc.querySelector('section.footnotes li#fn1')).not.toBeNull()
+  })
+})
+
 describe('maths', () => {
   it('renders inline and block formulas as SVG', () => {
     const doc = page('posts/linux-notes.html').querySelector('.vp-doc')!

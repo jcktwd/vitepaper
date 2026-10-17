@@ -59,7 +59,9 @@ function handleClick(event: MouseEvent, link: string) {
 </script>
 
 <template>
-  <div v-if="links.length" class="vp-social-links not-prose my-4 flex flex-wrap items-center gap-3">
+  <!-- A <span>, not a <div>: the `integration: socials` token renders this inside a paragraph, where a
+       <div> is invalid HTML; the browser would split the paragraph and Vue drop what follows on hydration -->
+  <span v-if="links.length" class="vp-social-links not-prose my-4 flex flex-wrap items-center gap-3">
     <a
       v-for="(item, index) in links"
       :key="index"
@@ -82,5 +84,5 @@ function handleClick(event: MouseEvent, link: string) {
       />
       <span>{{ getLabel(item) }}</span>
     </a>
-  </div>
+  </span>
 </template>
