@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useData } from 'vitepress'
+import { formatPostDate } from '../format-date.ts'
 import { data as posts } from '../posts.data.ts'
 
-const { frontmatter, page } = useData()
+const { frontmatter, page, theme } = useData()
 
 const isSyncedDoc = computed(() => Boolean(frontmatter.value.date || frontmatter.value.outlineId))
 const isDraft = computed(() => Boolean(frontmatter.value.draft))
@@ -25,13 +26,7 @@ const postTransitionName = computed(() => {
 })
 
 function formatDate(iso?: string): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  return formatPostDate(iso, theme.value.timezone)
 }
 
 </script>

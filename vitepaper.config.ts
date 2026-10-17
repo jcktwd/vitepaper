@@ -37,6 +37,11 @@ export interface VitePaperConfig {
     author: string
     /** Number of recent posts shown on the homepage */
     postsPerPage: number
+    /**
+     * IANA timezone post dates are shown in (e.g. 'Europe/London'). Defaults to `SITE_TIMEZONE`,
+     * then the server's `TZ`, then UTC
+     */
+    timezone: string
     /** Show estimated reading time on posts */
     showReadingTime: boolean
     /** Social icon links shown in the navbar and `<SocialLinks />` / `` `socials` `` blocks */
@@ -93,6 +98,7 @@ const defaultConfig: VitePaperConfig = {
     url: process.env.SITE_URL || 'https://example.com',
     author: process.env.SITE_AUTHOR || 'VitePaper Author',
     postsPerPage: Number(process.env.SITE_POSTS_PER_PAGE || 5),
+    timezone: process.env.SITE_TIMEZONE || process.env.TZ || 'UTC',
     showReadingTime: true,
     socials: parseEnvSocials(process.env.SITE_SOCIALS) || [
       { icon: 'github', link: 'https://github.com/satnaing/astro-paper', label: 'GitHub' },

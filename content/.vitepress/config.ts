@@ -28,6 +28,8 @@ import { createVitePaperThumbnailHashPlugin } from './lib/thumbhash.ts'
 export interface VitePaperThemeConfig extends DefaultTheme.Config {
   intro: string
   postsPerPage: number
+  /** IANA timezone post dates are shown in */
+  timezone: string
 }
 
 type VitePlugins = NonNullable<NonNullable<UserConfig['vite']>['plugins']>
@@ -144,6 +146,7 @@ export default defineConfigWithTheme<VitePaperThemeConfig>({
     ...(navLogo ? { logo: navLogo } : {}),
     intro: siteConfig.site.intro,
     postsPerPage: siteConfig.site.postsPerPage,
+    timezone: siteConfig.site.timezone,
 
     nav: [
       { text: 'Posts', link: '/posts', activeMatch: buildPostsActiveMatch(outlineNavItems) },

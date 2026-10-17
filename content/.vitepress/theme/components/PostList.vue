@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useData } from 'vitepress'
+import { formatPostDate } from '../format-date.ts'
 import { data as allLoadedPosts } from '../posts.data.ts'
 import {
   draftPosts as selectDrafts,
@@ -54,12 +55,8 @@ const recentPosts = computed(() => home.value.recent)
 const allTags = computed(() => tagCounts(allLoadedPosts))
 const filteredByTag = computed(() => postsWithTag(allLoadedPosts, selectedTag.value))
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+function formatDate(iso?: string): string {
+  return formatPostDate(iso, theme.value.timezone)
 }
 
 function getPostTransitionName(urlOrPath: string): string {
